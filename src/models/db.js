@@ -44,6 +44,18 @@ export async function listarGastos(userId) {
   return data ?? []
 }
 
+// Trae un solo gasto del usuario (para precargar el formulario de edición).
+export async function obtenerGasto(userId, id) {
+  const { data, error } = await getClient()
+    .from('gastos')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data // null si no existe o no es de este usuario
+}
+
 // Crea un gasto. `userId`/`cargadoPor` identifican a quién lo cargó (desde la sesión).
 export async function crearGasto(userId, cargadoPor, gasto) {
   const aNombreDe = gasto.a_nombre_de ? String(gasto.a_nombre_de) : cargadoPor
@@ -61,6 +73,26 @@ export async function crearGasto(userId, cargadoPor, gasto) {
     })
     .select()
     .single()
+  if (error) throw error
+  return data
+}
+
+// Actualiza un gasto del usuario (doble filtro id + user_id por seguridad).
+export async function actualizarGasto(userId, id, gasto) {
+  const { data, error } = await getClient()
+    .from('gastos')
+    .update({
+      descripcion: gasto.descripcion,
+      monto: gasto.monto,
+      moneda: normalizarMoneda(gasto.moneda),
+      a_nombre_de: gasto.a_nombre_de,
+      categoria: gasto.categoria ?? null,
+      fecha: gasto.fecha ?? null,
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .maybeSingle()
   if (error) throw error
   return data
 }

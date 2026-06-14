@@ -1,24 +1,23 @@
-// Rutas de gastos: SOLO definen las URLs. La lógica está en el controlador.
-// Todas son privadas (requireAuth).
+// Rutas de gastos. Todas privadas (requireAuth).
 import { Router } from 'express'
 import { requireAuth } from '../middlewares/auth.js'
 import {
-  crearDesdeFormulario,
-  eliminarDesdeFormulario,
-  listar,
+  formularioNuevo,
   crear,
+  lista,
+  formularioEditar,
+  actualizar,
   eliminar,
-  me,
 } from '../controllers/gastosController.js'
 
 export const gastosRouter = Router()
 
-// Formularios HTML (redirigen a /perfil)
-gastosRouter.post('/gastos', requireAuth, crearDesdeFormulario)
-gastosRouter.post('/gastos/:id/eliminar', requireAuth, eliminarDesdeFormulario)
+// Pantalla 2: cargar un gasto nuevo
+gastosRouter.get('/nuevo', requireAuth, formularioNuevo)
+gastosRouter.post('/nuevo', requireAuth, crear)
 
-// API JSON
-gastosRouter.get('/api/gastos', requireAuth, listar)
-gastosRouter.post('/api/gastos', requireAuth, crear)
-gastosRouter.delete('/api/gastos/:id', requireAuth, eliminar)
-gastosRouter.get('/api/me', requireAuth, me)
+// Pantalla 3: lista + acciones
+gastosRouter.get('/gastos', requireAuth, lista)
+gastosRouter.get('/gastos/:id/editar', requireAuth, formularioEditar)
+gastosRouter.post('/gastos/:id/editar', requireAuth, actualizar)
+gastosRouter.post('/gastos/:id/eliminar', requireAuth, eliminar)

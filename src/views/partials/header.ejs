@@ -5,12 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title><%= titulo %></title>
     <link rel="stylesheet" href="/style.css" />
+
+    <!-- PWA: hace la app instalable en el celu -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0d6efd" />
+    <link rel="icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
   </head>
   <body>
-    <nav>
-      <a href="/">Inicio</a>
-      <a href="/perfil">Perfil</a>
-      <a href="/about">About</a>
-      <a href="/api-data">API Data</a>
-      <a href="/healthz">Health</a>
-    </nav>
+    <% if (typeof user !== 'undefined' && user) { %>
+      <nav>
+        <a href="/nuevo">➕ Cargar</a>
+        <a href="/gastos">📋 Mis gastos</a>
+        <form method="post" action="/auth/logout" style="display:inline">
+          <button type="submit">Salir</button>
+        </form>
+      </nav>
+    <% } %>
