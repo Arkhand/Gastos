@@ -7,7 +7,7 @@ export const inicio = (req, res) => {
     res.redirect('/inicio')
     return
   }
-  res.render('landing', { user: undefined })
+  res.render('landing', { user: undefined, error: req.query.error })
 }
 
 // Health check (no aparece en el menú; sirve para monitoreo / verificar el deploy).

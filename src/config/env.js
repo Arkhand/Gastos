@@ -30,4 +30,8 @@ export const config = {
     model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
     enabled: Boolean(process.env.GEMINI_API_KEY),
   },
+
+  // Acceso: lista blanca de emails (separados por coma). Si está vacía, se usa
+  // la lista por defecto de la familia (ver config/acceso.js).
+  allowedEmails: process.env.ALLOWED_EMAILS ?? '',
 }

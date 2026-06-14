@@ -3,6 +3,7 @@
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { config } from './env.js'
+import { emailPermitido } from './acceso.js'
 
 // Forma del usuario que guardamos en la sesión: { id, displayName, email, photo }.
 // Sin base de datos de usuarios: guardamos el perfil completo en la cookie.
@@ -26,6 +27,10 @@ if (config.google.enabled) {
           displayName: profile.displayName,
           email: profile.emails?.[0]?.value,
           photo: profile.photos?.[0]?.value,
+        }
+        // La app es solo para la familia: si el email no está permitido, no entra.
+        if (!emailPermitido(user.email)) {
+          return done(null, false, { message: 'no-autorizado' })
         }
         done(null, user)
       }
