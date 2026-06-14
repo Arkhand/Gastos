@@ -23,8 +23,8 @@ export const callbackGoogle = (req, res, next) => {
   passport.authenticate('google', { failureRedirect: '/?error=auth' })(req, res, next)
 }
 
-// Si el callback salió bien, mandamos al perfil.
-export const callbackGoogleOk = (_req, res) => res.redirect('/perfil')
+// Si el callback salió bien, vamos al inicio de la app.
+export const callbackGoogleOk = (_req, res) => res.redirect('/inicio')
 
 // Cierra la sesión (en Passport 0.6+ es asíncrono con callback).
 export const logout = (req, res, next) => {

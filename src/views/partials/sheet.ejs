@@ -1,0 +1,66 @@
+<!-- Hoja inferior (bottom sheet) para cargar / editar un gasto.
+     Se abre con JS (clase sheet-open en el body). El form normal postea a /nuevo;
+     en modo edición, JS le cambia el action a /gastos/:id/editar. -->
+<div class="scrim" data-close-sheet></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <div class="sheet-title" id="sheet-title">Nuevo gasto</div>
+    <div class="sheet-heard" id="sheet-heard"></div>
+  </div>
+
+  <form class="sheet-form" id="sheet-form" method="post" action="/nuevo">
+    <div class="field">
+      <label for="f-descripcion">¿Qué fue?</label>
+      <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" autocomplete="off" required />
+    </div>
+
+    <div class="field">
+      <label for="f-monto">¿Cuánto?</label>
+      <div class="money-row">
+        <div class="money-inp">
+          <span class="money-sign" id="money-sign">$</span>
+          <input class="inp-money" name="monto" id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" required />
+        </div>
+        <div class="moneda-toggle" id="moneda-toggle">
+          <button type="button" class="moneda-opt is-on" data-moneda="ARS">ARS</button>
+          <button type="button" class="moneda-opt" data-moneda="USD">USD</button>
+        </div>
+      </div>
+      <input type="hidden" name="moneda" id="f-moneda" value="ARS" />
+    </div>
+
+    <div class="field">
+      <label>Categoría</label>
+      <div class="chips" id="cat-chips">
+        <% categorias.forEach(function (c) { %>
+          <button type="button" class="chip cat-<%= c.id %>" data-cat="<%= c.id %>">
+            <span class="chip-emoji"><%= c.emoji %></span><%= c.label %>
+          </button>
+        <% }) %>
+      </div>
+      <input type="hidden" name="categoria" id="f-categoria" value="otros" />
+    </div>
+
+    <div class="field">
+      <label>¿Cuándo?</label>
+      <div class="date-row" id="date-pills">
+        <button type="button" class="date-pill is-on" data-date="hoy">Hoy</button>
+        <button type="button" class="date-pill" data-date="ayer">Ayer</button>
+        <button type="button" class="date-pill" data-date="otro">Otro día</button>
+        <input type="date" class="date-input" id="f-fecha-input" style="display:none" />
+      </div>
+      <input type="hidden" name="fecha" id="f-fecha" value="" />
+    </div>
+
+    <div class="sheet-actions">
+      <button type="button" class="btn-ghost" data-close-sheet>Cancelar</button>
+      <button type="submit" class="btn-save">Guardar gasto</button>
+    </div>
+  </form>
+
+  <!-- Borrar (modo edición): form aparte, JS le pone el action y lo muestra -->
+  <form id="sheet-delete-form" method="post" action="#" style="display:none" onsubmit="return confirm('¿Borrar este gasto?')">
+    <button type="submit" class="btn-delete">🗑 Borrar gasto</button>
+  </form>
+</div>

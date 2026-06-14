@@ -1,0 +1,23 @@
+<!-- Barra de pestañas inferior. `tab` = home | stats | us -->
+<nav class="tabbar">
+  <a class="tab <%= tab === 'home' ? 'tab-on' : '' %>" href="/inicio">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+    </svg>
+    <span>Cargar</span>
+  </a>
+  <a class="tab <%= tab === 'stats' ? 'tab-on' : '' %>" href="/resumen">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="12" width="4" height="7" rx="1.2" fill="currentColor" />
+      <rect x="10" y="7" width="4" height="12" rx="1.2" fill="currentColor" />
+      <rect x="16" y="9" width="4" height="10" rx="1.2" fill="currentColor" />
+    </svg>
+    <span>Resumen</span>
+  </a>
+  <a class="tab <%= tab === 'us' ? 'tab-on' : '' %>" href="/nosotros">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+    </svg>
+    <span>Nosotros</span>
+  </a>
+</nav>

@@ -1,11 +1,10 @@
-// Service worker: cachea SOLO archivos estáticos (CSS, íconos, manifest).
-// Las páginas con sesión y cualquier cosa con datos van SIEMPRE a la red,
-// así nunca se mezclan datos entre usuarios ni se muestra info vieja.
+// Service worker: cachea SOLO imágenes/íconos y el manifest (rara vez cambian).
+// El CSS, el JS, las páginas y la API van SIEMPRE a la red, así nunca ves una
+// versión vieja del estilo o del código mientras seguimos iterando el diseño,
+// y nunca se mezclan datos entre usuarios.
 
-const CACHE = 'gastos-static-v1'
+const CACHE = 'gastos-static-v2'
 const ASSETS = [
-  '/style.css',
-  '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-512-maskable.png',
@@ -18,7 +17,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
 
-// Al activar: borramos caches viejas de versiones anteriores.
+// Al activar: borramos caches viejas (incluida la v1 que cacheaba el CSS).
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -28,8 +27,8 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// Al pedir algo: solo intervenimos en estáticos GET del mismo origen.
-// Todo lo demás (páginas, login, formularios) lo dejamos pasar a la red.
+// Al pedir algo: solo intervenimos en imágenes/íconos GET del mismo origen.
+// CSS, JS, páginas, login, formularios y API: red directa (siempre frescos).
 self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)
@@ -37,11 +36,11 @@ self.addEventListener('fetch', (event) => {
   const esEstatico =
     req.method === 'GET' &&
     url.origin === self.location.origin &&
-    /\.(css|png|webmanifest|ico|svg|jpg|jpeg|gif|woff2?)$/.test(url.pathname)
+    /\.(png|webmanifest|ico|svg|jpg|jpeg|gif|woff2?)$/.test(url.pathname)
 
-  if (!esEstatico) return // ← páginas y API: red directa, sin caché
+  if (!esEstatico) return // ← CSS/JS/páginas/API: red directa, sin caché
 
-  // Estático: primero caché (rápido), si no está, red y lo guardamos.
+  // Imagen/ícono: primero caché (rápido), si no está, red y lo guardamos.
   event.respondWith(
     caches.match(req).then(
       (cached) =>

@@ -4,7 +4,7 @@
 // de Google. Si YA estás logueado, te manda directo a cargar un gasto.
 export const inicio = (req, res) => {
   if (req.user) {
-    res.redirect('/nuevo')
+    res.redirect('/inicio')
     return
   }
   res.render('landing', { user: undefined })

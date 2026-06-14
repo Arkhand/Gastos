@@ -1,0 +1,80 @@
+<%- include('partials/header', { titulo: 'Gastos', user: user }) %>
+<div class="app-root">
+  <header class="hdr">
+    <div>
+      <div class="hdr-title">Gastos</div>
+      <div class="hdr-sub">Contame en qué se te fue la plata</div>
+    </div>
+    <div style="text-align:right">
+      <div class="hdr-total">
+        <div class="hdr-total-label">Hoy</div>
+        <div class="hdr-total-amount"><%= totalHoy %></div>
+      </div>
+      <form method="post" action="/auth/logout">
+        <button type="submit" class="hdr-logout">Salir</button>
+      </form>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="bubble bubble-hint" id="bubble">«Gasté 4500 en el súper»</div>
+    <div class="mascot-wrap">
+      <div class="mascot-shadow"></div>
+      <%- include('partials/chubi', { estado: 'idle' }) %>
+    </div>
+    <button class="mic-btn" id="mic-btn" type="button" aria-label="Hablar un gasto">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+        <rect x="9" y="2.5" width="6" height="11.5" rx="3" fill="currentColor" />
+        <path d="M5.5 11a6.5 6.5 0 0 0 13 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+        <path d="M12 17.5V21" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+        <path d="M8.5 21h7" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+      </svg>
+    </button>
+    <div class="mic-label" id="mic-label">Tocá y contame un gasto</div>
+  </section>
+
+  <section class="recent">
+    <div class="recent-head">Últimos gastos</div>
+    <% if (!dbEnabled) { %>
+      <div class="recent-empty">Base de datos no configurada todavía.</div>
+    <% } else if (grupos.length === 0) { %>
+      <div class="recent-empty">Sin gastos todavía. Tocá el micrófono o el ➕ para cargar el primero.</div>
+    <% } else { %>
+      <% grupos.forEach(function (grupo) { %>
+        <div class="day-group">
+          <div class="day-row">
+            <span class="day-label"><%= grupo.etiqueta %></span>
+            <span class="day-total"><%= grupo.totalStr %></span>
+          </div>
+          <div class="day-card">
+            <% grupo.items.forEach(function (g) { var c = catById(g.categoria) %>
+              <button
+                type="button"
+                class="exp-row exp-row-btn"
+                data-id="<%= g.id %>"
+                data-descripcion="<%= g.descripcion %>"
+                data-monto="<%= g.monto %>"
+                data-moneda="<%= g.moneda %>"
+                data-categoria="<%= c.id %>"
+                data-fecha="<%= g.fecha || '' %>"
+              >
+                <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
+                <span class="exp-mid">
+                  <span class="exp-desc"><%= g.descripcion %></span>
+                  <span class="exp-cat"><%= c.label %></span>
+                </span>
+                <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
+  </section>
+
+  <button class="fab" id="fab" type="button" aria-label="Cargar gasto"><span>＋</span></button>
+
+  <%- include('partials/sheet', { categorias: categorias }) %>
+  <%- include('partials/tabbar', { tab: 'home' }) %>
+</div>
+<%- include('partials/footer') %>

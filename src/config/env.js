@@ -22,4 +22,12 @@ export const config = {
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     enabled: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   },
+
+  // IA para interpretar la voz (Gemini). La API key es SOLO de servidor: el
+  // navegador manda el texto a /api/interpretar y nunca ve la clave.
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+    enabled: Boolean(process.env.GEMINI_API_KEY),
+  },
 }

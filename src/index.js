@@ -54,8 +54,8 @@ app.use(passport.session())
 
 // --- Rutas (cada router define URLs; la lógica vive en controllers/) ---
 app.use('/auth', authRouter) // login: /auth/google, /auth/google/callback, /auth/logout
-app.use('/', paginasRouter) // páginas: /, /about, /perfil, /api-data, /healthz
-app.use('/', gastosRouter) // gastos: /gastos, /api/gastos, /api/me
+app.use('/', paginasRouter) // públicas: / (landing) y /healthz
+app.use('/', gastosRouter) // app: /inicio, /resumen, /nosotros, acciones y /api/interpretar
 
 // --- Manejador de errores (último middleware) ---
 app.use(errorHandler)
