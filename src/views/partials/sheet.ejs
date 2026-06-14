@@ -12,7 +12,7 @@
   <form class="sheet-form" id="sheet-form" method="post" action="/nuevo">
     <div class="field">
       <label for="f-descripcion">¿Qué fue?</label>
-      <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" autocomplete="off" required />
+      <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" autocomplete="off" />
     </div>
 
     <div class="field">
@@ -20,7 +20,7 @@
       <div class="money-row">
         <div class="money-inp">
           <span class="money-sign" id="money-sign">$</span>
-          <input class="inp-money" name="monto" id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" required />
+          <input class="inp-money" name="monto" id="f-monto" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" />
         </div>
         <div class="moneda-toggle" id="moneda-toggle">
           <button type="button" class="moneda-opt is-on" data-moneda="ARS">ARS</button>
@@ -28,6 +28,18 @@
         </div>
       </div>
       <input type="hidden" name="moneda" id="f-moneda" value="ARS" />
+    </div>
+
+    <div class="field">
+      <label>¿A nombre de quién?</label>
+      <div class="segmented" id="persona-seg" data-default="<%= personaDefault %>">
+        <% personas.forEach(function (p) { %>
+          <button type="button" class="seg-opt" data-persona="<%= p.id %>">
+            <span class="seg-emoji"><%= p.emoji %></span><%= p.label %>
+          </button>
+        <% }) %>
+      </div>
+      <input type="hidden" name="a_nombre_de" id="f-persona" value="" />
     </div>
 
     <div class="field">

@@ -8,6 +8,7 @@ import {
   eliminarGasto,
 } from '../models/db.js'
 import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.js'
+import { PERSONAS, personaPorDefecto } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { hoyAR, ayerAR } from '../utils/fecha.js'
 
@@ -76,15 +77,24 @@ export const home = async (req, res, next) => {
     if (dbEnabled) gastos = await listarGastos(req.user.id)
     const hoy = hoyAR()
     const totalHoy = totalesPorMoneda(gastos.filter((g) => (g.fecha || hoy) === hoy))
+    // Si venimos de crear/editar (?ok=<id>), armamos el dato para el toast de éxito.
+    let creado = null
+    if (req.query.ok) {
+      const g = gastos.find((x) => String(x.id) === String(req.query.ok))
+      if (g) creado = { id: g.id, aNombreDe: g.a_nombre_de, montoStr: fmtMonto(g.moneda, g.monto) }
+    }
     res.render('home', {
       user: req.user,
       dbEnabled,
       iaEnabled,
       categorias: CATEGORIAS,
+      personas: PERSONAS,
+      personaDefault: personaPorDefecto(req.user.email),
       catById,
       fmt: fmtMonto,
       grupos: agruparPorDia(gastos),
       totalHoy,
+      creado,
       tab: 'home',
     })
   } catch (err) {
@@ -103,8 +113,8 @@ export const crear = async (req, res, next) => {
       res.redirect('/inicio')
       return
     }
-    await crearGasto(req.user.id, req.user.displayName, r.datos)
-    res.redirect('/inicio')
+    const nuevo = await crearGasto(req.user.id, req.user.displayName, r.datos)
+    res.redirect('/inicio?ok=' + encodeURIComponent(nuevo.id))
   } catch (err) {
     next(err)
   }
@@ -123,7 +133,7 @@ export const actualizar = async (req, res, next) => {
     }
     const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? req.user.displayName }
     await actualizarGasto(req.user.id, req.params.id, datos)
-    res.redirect('/inicio')
+    res.redirect('/inicio?ok=' + encodeURIComponent(req.params.id))
   } catch (err) {
     next(err)
   }

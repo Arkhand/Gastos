@@ -22,6 +22,10 @@
   var monedaToggle = document.getElementById('moneda-toggle')
   var fCategoria = document.getElementById('f-categoria')
   var catChips = document.getElementById('cat-chips')
+  var personaSeg = document.getElementById('persona-seg')
+  var fPersona = document.getElementById('f-persona')
+  // Persona preseleccionada según el usuario logueado (la define el servidor).
+  var personaDefault = (personaSeg && personaSeg.getAttribute('data-default')) || 'Daniel'
   var fFecha = document.getElementById('f-fecha')
   var fechaInput = document.getElementById('f-fecha-input')
   var datePills = document.getElementById('date-pills')
@@ -50,6 +54,94 @@
     bubble.classList.add(listening ? 'bubble-listening' : 'bubble-hint')
   }
 
+  // ============ Sonidos (WebAudio, sin archivos) ============
+  // Tono característico por tipo: success agudo-alegre, warning doble medio,
+  // error grave descendente. Se crea el contexto recién al primer uso (política
+  // de autoplay) y si el navegador lo bloquea, simplemente no suena.
+  var audioCtx = null
+  function beep(type) {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext
+      if (!AC) return
+      if (!audioCtx) audioCtx = new AC()
+      if (audioCtx.state === 'suspended') audioCtx.resume()
+      var notas = {
+        success: [[660, 0, 0.10], [990, 0.10, 0.16]],
+        warning: [[540, 0, 0.11], [540, 0.17, 0.13]],
+        error: [[320, 0, 0.16], [200, 0.17, 0.24]],
+      }[type] || []
+      var t0 = audioCtx.currentTime
+      for (var i = 0; i < notas.length; i++) {
+        var n = notas[i]
+        var osc = audioCtx.createOscillator()
+        var gain = audioCtx.createGain()
+        osc.type = type === 'error' ? 'triangle' : 'sine'
+        osc.frequency.value = n[0]
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        var st = t0 + n[1]
+        var en = st + n[2]
+        gain.gain.setValueAtTime(0.0001, st)
+        gain.gain.exponentialRampToValueAtTime(0.22, st + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, en)
+        osc.start(st)
+        osc.stop(en + 0.03)
+      }
+    } catch (_) { /* sin audio, no pasa nada */ }
+  }
+
+  // ============ Toasts (arriba, ~2s) ============
+  function toastHost() {
+    var h = document.getElementById('toast-host')
+    if (!h) {
+      h = document.createElement('div')
+      h.id = 'toast-host'
+      document.body.appendChild(h)
+    }
+    return h
+  }
+
+  // type: 'success' | 'warning' | 'error'. action opcional: { label, onClick }.
+  function toast(type, msg, action) {
+    var host = toastHost()
+    var el = document.createElement('div')
+    el.className = 'toast toast-' + type
+    var ico = document.createElement('span')
+    ico.className = 'toast-ico'
+    ico.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : '!'
+    var txt = document.createElement('span')
+    txt.className = 'toast-msg'
+    txt.textContent = msg
+    el.appendChild(ico)
+    el.appendChild(txt)
+    var dismissed = false
+    function dismiss() {
+      if (dismissed) return
+      dismissed = true
+      clearTimeout(timer)
+      el.classList.remove('is-in')
+      el.classList.add('is-out')
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el) }, 240)
+    }
+    if (action && action.label) {
+      var btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'toast-act'
+      btn.textContent = action.label
+      btn.addEventListener('click', function () {
+        if (action.onClick) action.onClick()
+        dismiss()
+      })
+      el.appendChild(btn)
+    }
+    host.appendChild(el)
+    beep(type)
+    requestAnimationFrame(function () { el.classList.add('is-in') })
+    // Los toasts duran ~2s; los que traen botón (Editar) un poco más para poder tocarlo.
+    var timer = setTimeout(dismiss, action ? 4000 : 2000)
+    return el
+  }
+
   // ============ Sheet (hoja inferior) ============
   function openSheet() { document.body.classList.add('sheet-open') }
   function closeSheet() { document.body.classList.remove('sheet-open') }
@@ -71,6 +163,17 @@
       var opts = monedaToggle.querySelectorAll('.moneda-opt')
       for (var i = 0; i < opts.length; i++) {
         opts[i].classList.toggle('is-on', opts[i].getAttribute('data-moneda') === m)
+      }
+    }
+  }
+
+  function selectPersona(p) {
+    var val = p === 'Daniel' || p === 'Daniela' ? p : ''
+    if (fPersona) fPersona.value = val
+    if (personaSeg) {
+      var opts = personaSeg.querySelectorAll('.seg-opt')
+      for (var i = 0; i < opts.length; i++) {
+        opts[i].classList.toggle('is-on', opts[i].getAttribute('data-persona') === val)
       }
     }
   }
@@ -101,6 +204,7 @@
     if (desc) desc.value = ''
     if (monto) monto.value = ''
     selectMoneda('ARS')
+    selectPersona(personaDefault)
     selectChip('otros')
     selectDatePill('hoy')
   }
@@ -108,10 +212,30 @@
   function fillForm(g) {
     if (!g) return
     if (desc && g.descripcion) desc.value = g.descripcion
-    if (monto && g.monto != null) monto.value = g.monto
+    if (monto && g.monto) monto.value = g.monto
     selectMoneda(g.moneda)
+    // Si Gemini no detectó a la persona, dejamos la preseleccionada por defecto.
+    if (g.persona) selectPersona(g.persona)
     selectChip(g.categoria || 'otros')
     setFecha(g.fecha)
+  }
+
+  // Qué campos obligatorios faltan en la hoja (para warnings). Devuelve etiquetas.
+  function camposFaltantes() {
+    var f = []
+    if (!desc || !desc.value.trim()) f.push('qué')
+    if (!monto || !(Number(monto.value) > 0)) f.push('cuánto')
+    if (!fPersona || !fPersona.value) f.push('quién')
+    return f
+  }
+
+  function focoEn(label) {
+    if (label === 'qué' && desc) desc.focus()
+    else if (label === 'cuánto' && monto) monto.focus()
+    else if (label === 'quién' && personaSeg) {
+      var first = personaSeg.querySelector('.seg-opt')
+      if (first) first.focus()
+    }
   }
 
   // Abrir en modo "nuevo"
@@ -133,6 +257,7 @@
     if (desc) desc.value = row.getAttribute('data-descripcion') || ''
     if (monto) monto.value = row.getAttribute('data-monto') || ''
     selectMoneda(row.getAttribute('data-moneda'))
+    selectPersona(row.getAttribute('data-nombre'))
     selectChip(row.getAttribute('data-categoria') || 'otros')
     setFecha(row.getAttribute('data-fecha'))
     if (form) form.action = '/gastos/' + id + '/editar'
@@ -159,6 +284,10 @@
       var b = e.target.closest('.moneda-opt')
       if (b) selectMoneda(b.getAttribute('data-moneda'))
     })
+    if (personaSeg) personaSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-opt')
+      if (b) selectPersona(b.getAttribute('data-persona'))
+    })
     if (datePills) datePills.addEventListener('click', function (e) {
       var b = e.target.closest('.date-pill')
       if (!b) return
@@ -168,6 +297,17 @@
     })
     if (fechaInput) fechaInput.addEventListener('change', function () {
       if (fFecha) fFecha.value = fechaInput.value
+    })
+
+    // Validación al guardar: descripción, monto y persona son obligatorios.
+    // Si falta algo, no enviamos y mostramos un warning (en vez del popup nativo).
+    if (form) form.addEventListener('submit', function (e) {
+      var faltan = camposFaltantes()
+      if (faltan.length) {
+        e.preventDefault()
+        toast('warning', 'Te falta: ' + faltan.join(', '))
+        focoEn(faltan[0])
+      }
     })
 
     // Cerrar (scrim, botón cancelar)
@@ -254,21 +394,33 @@
       })
       if (!res.ok) throw new Error('status ' + res.status)
       var data = await res.json()
-      setChubi('happy')
-      setTimeout(function () { setChubi('idle') }, 1600)
       if (micLabel) micLabel.textContent = MIC_IDLE
+      // Abrimos "nuevo gasto" con lo que Gemini pudo parsear (fecha=hoy y
+      // moneda=ARS ya vienen por defecto; persona cae en la del usuario).
       openNew()
       fillForm(data.gasto)
-      if (sheetTitle) sheetTitle.textContent = '¿Lo anoté bien?'
       if (heard) heard.textContent = '«' + texto + '»'
+      var faltan = camposFaltantes()
+      if (faltan.length) {
+        // Mapeo incompleto: warning y a completar a mano lo que falta.
+        setChubi('idle')
+        if (sheetTitle) sheetTitle.textContent = 'Revisá el gasto'
+        toast('warning', 'Me faltó: ' + faltan.join(', ') + '. Completalo 👇')
+        focoEn(faltan[0])
+      } else {
+        setChubi('happy')
+        setTimeout(function () { setChubi('idle') }, 1600)
+        if (sheetTitle) sheetTitle.textContent = '¿Lo anoté bien?'
+      }
     } catch (err) {
-      // Fallback: abrir la hoja con lo dicho en la descripción para cargar a mano.
+      // Error real (request falló / IA caída): toast de error y a cargar a mano.
       setChubi('idle')
       if (micLabel) micLabel.textContent = MIC_IDLE
       openNew()
       if (desc) desc.value = texto
       if (sheetTitle) sheetTitle.textContent = 'Revisá el gasto'
-      if (heard) heard.textContent = '«' + texto + '» — completá lo que falte'
+      if (heard) heard.textContent = '«' + texto + '»'
+      toast('error', 'No pude interpretar lo que dijiste. Probá de nuevo o cargalo a mano.')
     }
   }
 
@@ -277,5 +429,24 @@
       if (listening && recognition) { try { recognition.stop() } catch (_) {} return }
       startListening()
     })
+  }
+
+  // ============ Toast de éxito tras guardar (viene de /inicio?ok=<id>) ============
+  var flash = document.getElementById('flash-creado')
+  if (flash) {
+    var fid = flash.getAttribute('data-id')
+    var fnombre = flash.getAttribute('data-nombre') || ''
+    var fmonto = flash.getAttribute('data-monto') || ''
+    toast('success', 'Cargado a nombre de ' + fnombre + ' · ' + fmonto, {
+      label: 'Editar',
+      onClick: function () {
+        var row = document.querySelector('.exp-row-btn[data-id="' + fid + '"]')
+        if (row) openEdit(row)
+      },
+    })
+    // Limpiamos ?ok= de la URL para que un refresh no repita el toast.
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', '/inicio')
+    }
   }
 })()

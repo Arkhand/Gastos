@@ -55,6 +55,7 @@
                 data-descripcion="<%= g.descripcion %>"
                 data-monto="<%= g.monto %>"
                 data-moneda="<%= g.moneda %>"
+                data-nombre="<%= g.a_nombre_de || '' %>"
                 data-categoria="<%= c.id %>"
                 data-fecha="<%= g.fecha || '' %>"
               >
@@ -74,7 +75,16 @@
 
   <button class="fab" id="fab" type="button" aria-label="Cargar gasto"><span>＋</span></button>
 
-  <%- include('partials/sheet', { categorias: categorias }) %>
+  <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault }) %>
   <%- include('partials/tabbar', { tab: 'home' }) %>
+
+  <% if (creado) { %>
+    <!-- Flash de éxito tras guardar: app.js lo lee al cargar, muestra el toast y limpia la URL. -->
+    <div id="flash-creado"
+         data-id="<%= creado.id %>"
+         data-nombre="<%= creado.aNombreDe %>"
+         data-monto="<%= creado.montoStr %>"
+         hidden></div>
+  <% } %>
 </div>
 <%- include('partials/footer') %>

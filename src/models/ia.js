@@ -3,6 +3,7 @@
 // El navegador manda el texto a /api/interpretar; nunca ve la clave.
 import { config } from '../config/env.js'
 import { CATEGORIA_IDS } from '../config/categorias.js'
+import { PERSONA_ENUM, normalizarPersona } from '../config/personas.js'
 import { hoyAR } from '../utils/fecha.js'
 
 export const iaEnabled = config.gemini.enabled
@@ -18,9 +19,10 @@ const responseSchema = {
     monto: { type: 'NUMBER' },
     moneda: { type: 'STRING', enum: ['ARS', 'USD'] },
     categoria: { type: 'STRING', enum: CATEGORIA_IDS },
+    persona: { type: 'STRING', enum: PERSONA_ENUM },
     fecha: { type: 'STRING', description: 'Fecha en formato YYYY-MM-DD' },
   },
-  required: ['descripcion', 'monto', 'moneda', 'categoria', 'fecha'],
+  required: ['descripcion', 'monto', 'moneda', 'categoria', 'persona', 'fecha'],
 }
 
 function construirPrompt(texto) {
@@ -29,10 +31,11 @@ function construirPrompt(texto) {
     'Sos un asistente que extrae UN gasto de una frase dicha en español rioplatense (Argentina).',
     `Hoy es ${hoy}. Si la frase dice "ayer" restá un día, "anteayer" dos; si no menciona fecha, usá hoy.`,
     'Devolvé el JSON pedido con estos campos:',
-    '- descripcion: texto corto de qué se gastó (sin el monto), capitalizado.',
-    '- monto: número en la moneda detectada. Entendé "mil", "lucas", "palos", "k" y el formato es-AR (el punto separa miles: "2.500" = 2500).',
+    '- descripcion: texto corto de qué se gastó (sin el monto), capitalizado. Si no se entiende qué se gastó, dejala vacía "".',
+    '- monto: número en la moneda detectada. Entendé "mil", "lucas", "palos", "k" y el formato es-AR (el punto separa miles: "2.500" = 2500). Si no se dice un monto, devolvé 0.',
     '- moneda: "USD" solo si menciona dólares o usd; si no, "ARS".',
     `- categoria: una de estas exactamente: ${CATEGORIA_IDS.join(', ')}. Si no encaja, "otros".`,
+    '- persona: a nombre de quién fue el gasto. "Daniel" si dice Daniel, "él", "el varón" o nombres de varón; "Daniela" si dice Daniela, "ella", "la mujer" o nombres de mujer. Si solo dice "Dani" (ambiguo) o no menciona a nadie, devolvé "Desconocido".',
     '- fecha: en formato YYYY-MM-DD.',
     '',
     `Frase: "${texto}"`,
@@ -70,11 +73,15 @@ export async function interpretarGasto(texto) {
   if (!txt) throw new Error('Gemini no devolvió contenido.')
 
   const parsed = JSON.parse(txt)
+  // No forzamos defaults que tapen lo que Gemini NO pudo mapear: descripcion vacía,
+  // monto 0 y persona null le avisan al front que falta completar a mano (warning).
+  // Lo que sí tiene default natural es fecha (hoy) y moneda (ARS).
   return {
-    descripcion: String(parsed.descripcion ?? '').trim() || 'Gasto',
+    descripcion: String(parsed.descripcion ?? '').trim(),
     monto: Number(parsed.monto) || 0,
     moneda: parsed.moneda === 'USD' ? 'USD' : 'ARS',
     categoria: CATEGORIA_IDS.includes(parsed.categoria) ? parsed.categoria : 'otros',
+    persona: normalizarPersona(parsed.persona),
     fecha: /^\d{4}-\d{2}-\d{2}$/.test(parsed.fecha) ? parsed.fecha : hoyAR(),
   }
 }
