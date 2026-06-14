@@ -1,0 +1,22 @@
+<%- include('partials/header', { titulo: 'Gastos en Vercel' }) %>
+
+<h1>Bienvenido a Gastos 🚀</h1>
+<p>Express en Vercel, con login de Google y base de datos Supabase.</p>
+
+<% if (user) { %>
+  <p>Hola, <strong><%= user.displayName %></strong> 👋</p>
+  <% if (user.photo) { %>
+    <img src="<%= user.photo %>" alt="Tu avatar" width="64" style="border-radius:50%" />
+  <% } %>
+  <p><a href="/perfil">Ver mi perfil y gastos</a></p>
+  <form method="post" action="/auth/logout">
+    <button type="submit">Cerrar sesión</button>
+  </form>
+<% } else { %>
+  <p>No has iniciado sesión.</p>
+  <p><a href="/auth/google">Iniciar sesión con Google</a></p>
+<% } %>
+
+<img src="/logo.png" alt="Logo" width="120" />
+
+<%- include('partials/footer') %>

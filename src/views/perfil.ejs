@@ -1,0 +1,76 @@
+<%- include('partials/header', { titulo: 'Mi perfil' }) %>
+
+<h1>Mi perfil</h1>
+
+<% if (user.photo) { %>
+  <img src="<%= user.photo %>" alt="Tu avatar" width="96" style="border-radius:50%" />
+<% } %>
+
+<ul>
+  <li><strong>Nombre:</strong> <%= user.displayName %></li>
+  <li><strong>Email:</strong> <%= user.email || '—' %></li>
+</ul>
+
+<h2>Mis gastos</h2>
+
+<% if (!dbEnabled) { %>
+  <p><em>Base de datos no configurada todavía.</em></p>
+<% } else { %>
+
+  <form method="post" action="/gastos">
+    <input name="descripcion" placeholder="Descripción" required />
+    <input name="monto" type="number" step="0.01" min="0" placeholder="Monto" required />
+    <select name="moneda">
+      <option value="ARS" selected>ARS</option>
+      <option value="USD">USD</option>
+    </select>
+    <input name="a_nombre_de" placeholder="A nombre de" value="<%= user.displayName %>" />
+    <input name="categoria" placeholder="Categoría" />
+    <input name="fecha" type="date" />
+    <button type="submit">Agregar gasto</button>
+  </form>
+
+  <table border="1" cellpadding="6" style="border-collapse:collapse;margin-top:1rem">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Descripción</th>
+        <th>A nombre de</th>
+        <th>Categoría</th>
+        <th>Monto</th>
+        <th>Cargado por</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (gastos.length === 0) { %>
+        <tr><td colspan="7">Sin gastos todavía</td></tr>
+      <% } else { %>
+        <% gastos.forEach(function (g) { %>
+          <tr>
+            <td><%= g.fecha || '' %></td>
+            <td><%= g.descripcion %></td>
+            <td><%= g.a_nombre_de %></td>
+            <td><%= g.categoria || '' %></td>
+            <td style="text-align:right"><%= g.moneda %> $<%= Number(g.monto).toFixed(2) %></td>
+            <td><%= g.cargado_por %></td>
+            <td>
+              <form method="post" action="/gastos/<%= g.id %>/eliminar" onsubmit="return confirm('¿Borrar este gasto?')">
+                <button type="submit">🗑</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+
+  <p><strong>Total: <%= totalStr %></strong></p>
+
+<% } %>
+
+<form method="post" action="/auth/logout" style="margin-top:1.5rem">
+  <button type="submit">Cerrar sesión</button>
+</form>
+
+<%- include('partials/footer') %>

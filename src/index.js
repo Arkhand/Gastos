@@ -1,20 +1,23 @@
 import express from 'express'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import cookieSession from 'cookie-session'
 import passport from 'passport'
 
-import { authRouter, requireAuth } from './auth.js'
-import { dbEnabled, listarGastos, crearGasto, eliminarGasto } from './db.js'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import { authRouter } from './routes/auth.js'
+import { paginasRouter } from './routes/paginas.js'
+import { gastosRouter } from './routes/gastos.js'
 
 const app = express()
 
 // Vercel corre detrás de un proxy. Necesario para detectar https/host real
 // (lo usa la callbackURL relativa de Google) y para setear bien la cookie `secure`.
 app.set('trust proxy', true)
+
+// --- Motor de vistas (EJS): las vistas viven en src/views/*.ejs, separadas del código.
+// Anclamos la ruta en process.cwd() (raíz del proyecto) porque es lo confiable
+// dentro de la función serverless de Vercel.
+app.set('view engine', 'ejs')
+app.set('views', path.join(process.cwd(), 'src', 'views'))
 
 // Parseo de bodies: JSON (API) y formularios HTML.
 app.use(express.json())
@@ -47,256 +50,10 @@ app.use((req, _res, next) => {
 app.use(passport.initialize())
 app.use(passport.session())
 
-// Rutas de autenticación: /auth/google, /auth/google/callback, /auth/logout
-app.use('/auth', authRouter)
-
-// --- Helpers ---
-function escapeHtml(value) {
-  return value.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-  )
-}
-
-function page(title, body) {
-  return `<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)}</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <nav>
-      <a href="/">Inicio</a>
-      <a href="/perfil">Perfil</a>
-      <a href="/about">About</a>
-      <a href="/api-data">API Data</a>
-      <a href="/healthz">Health</a>
-    </nav>
-    ${body}
-  </body>
-</html>`
-}
-
-// Envuelve handlers async para que sus errores lleguen al manejador de errores.
-const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next)
-
-// --- Rutas públicas ---
-app.get('/', (req, res) => {
-  const user = req.user
-  const authBox = user
-    ? `<p>Hola, <strong>${escapeHtml(user.displayName)}</strong> 👋</p>
-       ${user.photo ? `<img src="${escapeHtml(user.photo)}" alt="Tu avatar" width="64" style="border-radius:50%" />` : ''}
-       <p><a href="/perfil">Ver mi perfil y gastos</a></p>
-       <form method="post" action="/auth/logout">
-         <button type="submit">Cerrar sesión</button>
-       </form>`
-    : `<p>No has iniciado sesión.</p>
-       <p><a href="/auth/google">Iniciar sesión con Google</a></p>`
-
-  res.type('html').send(
-    page(
-      'Gastos en Vercel',
-      `<h1>Bienvenido a Gastos 🚀</h1>
-       <p>Express en Vercel, con login de Google y base de datos Supabase.</p>
-       ${authBox}
-       <img src="/logo.png" alt="Logo" width="120" />`
-    )
-  )
-})
-
-app.get('/about', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'about.htm'))
-})
-
-// Endpoint de API de ejemplo - JSON (público)
-app.get('/api-data', (_req, res) => {
-  res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
-
-// Health check
-app.get('/healthz', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
-})
-
-// --- Perfil + gastos (página privada) ---
-app.get(
-  '/perfil',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const user = req.user
-
-    let gastosHtml
-    if (!dbEnabled) {
-      gastosHtml = '<h2>Mis gastos</h2><p><em>Base de datos no configurada todavía.</em></p>'
-    } else {
-      const gastos = await listarGastos(user.id)
-      const filas = gastos
-        .map(
-          (g) => `<tr>
-        <td>${escapeHtml(g.fecha ?? '')}</td>
-        <td>${escapeHtml(g.descripcion)}</td>
-        <td>${escapeHtml(g.a_nombre_de)}</td>
-        <td>${escapeHtml(g.categoria ?? '')}</td>
-        <td style="text-align:right">${escapeHtml(g.moneda)} $${Number(g.monto).toFixed(2)}</td>
-        <td>${escapeHtml(g.cargado_por)}</td>
-        <td><form method="post" action="/gastos/${g.id}/eliminar" onsubmit="return confirm('¿Borrar este gasto?')"><button type="submit">🗑</button></form></td>
-      </tr>`
-        )
-        .join('')
-      // Totales separados por moneda (no se puede sumar ARS con USD).
-      const totales = gastos.reduce((acc, g) => {
-        acc[g.moneda] = (acc[g.moneda] ?? 0) + Number(g.monto)
-        return acc
-      }, {})
-      const totalStr =
-        Object.entries(totales)
-          .map(([m, v]) => `${m} $${v.toFixed(2)}`)
-          .join(' — ') || '—'
-      gastosHtml = `
-        <h2>Mis gastos</h2>
-        <form method="post" action="/gastos">
-          <input name="descripcion" placeholder="Descripción" required />
-          <input name="monto" type="number" step="0.01" min="0" placeholder="Monto" required />
-          <select name="moneda">
-            <option value="ARS" selected>ARS</option>
-            <option value="USD">USD</option>
-          </select>
-          <input name="a_nombre_de" placeholder="A nombre de" value="${escapeHtml(user.displayName)}" />
-          <input name="categoria" placeholder="Categoría" />
-          <input name="fecha" type="date" />
-          <button type="submit">Agregar gasto</button>
-        </form>
-        <table border="1" cellpadding="6" style="border-collapse:collapse;margin-top:1rem">
-          <thead>
-            <tr><th>Fecha</th><th>Descripción</th><th>A nombre de</th><th>Categoría</th><th>Monto</th><th>Cargado por</th><th></th></tr>
-          </thead>
-          <tbody>${filas || '<tr><td colspan="7">Sin gastos todavía</td></tr>'}</tbody>
-        </table>
-        <p><strong>Total: ${totalStr}</strong></p>`
-    }
-
-    res.type('html').send(
-      page(
-        'Mi perfil',
-        `<h1>Mi perfil</h1>
-         ${user.photo ? `<img src="${escapeHtml(user.photo)}" alt="Tu avatar" width="96" style="border-radius:50%" />` : ''}
-         <ul>
-           <li><strong>Nombre:</strong> ${escapeHtml(user.displayName)}</li>
-           <li><strong>Email:</strong> ${escapeHtml(user.email ?? '—')}</li>
-         </ul>
-         ${gastosHtml}
-         <form method="post" action="/auth/logout" style="margin-top:1.5rem">
-           <button type="submit">Cerrar sesión</button>
-         </form>`
-      )
-    )
-  })
-)
-
-// --- Acciones de gastos vía formulario (redirigen a /perfil) ---
-app.post(
-  '/gastos',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!dbEnabled) {
-      res.status(503).send('Base de datos no configurada.')
-      return
-    }
-    const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = req.body ?? {}
-    const montoNum = Number(monto)
-    if (!descripcion || !Number.isFinite(montoNum)) {
-      res.status(400).send('Faltan datos: descripción y monto son obligatorios.')
-      return
-    }
-    await crearGasto(req.user.id, req.user.displayName, {
-      descripcion: String(descripcion),
-      monto: montoNum,
-      moneda,
-      a_nombre_de: a_nombre_de ? String(a_nombre_de) : null,
-      categoria: categoria ? String(categoria) : null,
-      fecha: fecha ? String(fecha) : null,
-    })
-    res.redirect('/perfil')
-  })
-)
-
-app.post(
-  '/gastos/:id/eliminar',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!dbEnabled) {
-      res.status(503).send('Base de datos no configurada.')
-      return
-    }
-    await eliminarGasto(req.user.id, req.params.id)
-    res.redirect('/perfil')
-  })
-)
-
-// --- API JSON de gastos (privada) ---
-app.get(
-  '/api/gastos',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!dbEnabled) {
-      res.status(503).json({ error: 'Base de datos no configurada' })
-      return
-    }
-    res.json({ gastos: await listarGastos(req.user.id) })
-  })
-)
-
-app.post(
-  '/api/gastos',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!dbEnabled) {
-      res.status(503).json({ error: 'Base de datos no configurada' })
-      return
-    }
-    const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = req.body ?? {}
-    const montoNum = Number(monto)
-    if (!descripcion || !Number.isFinite(montoNum)) {
-      res.status(400).json({ error: 'descripcion y monto son obligatorios' })
-      return
-    }
-    const gasto = await crearGasto(req.user.id, req.user.displayName, {
-      descripcion: String(descripcion),
-      monto: montoNum,
-      moneda,
-      a_nombre_de: a_nombre_de ?? null,
-      categoria: categoria ?? null,
-      fecha: fecha ?? null,
-    })
-    res.status(201).json({ gasto })
-  })
-)
-
-app.delete(
-  '/api/gastos/:id',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!dbEnabled) {
-      res.status(503).json({ error: 'Base de datos no configurada' })
-      return
-    }
-    await eliminarGasto(req.user.id, req.params.id)
-    res.status(204).end()
-  })
-)
-
-// Endpoint privado de ejemplo: devuelve el usuario logueado.
-app.get('/api/me', requireAuth, (req, res) => {
-  res.json({ user: req.user })
-})
+// --- Controladores (routers) ---
+app.use('/auth', authRouter) // login: /auth/google, /auth/google/callback, /auth/logout
+app.use('/', paginasRouter) // páginas: /, /about, /perfil, /api-data, /healthz
+app.use('/', gastosRouter) // gastos: /gastos, /api/gastos, /api/me
 
 // --- Manejador de errores (último middleware) ---
 app.use((err, req, res, _next) => {

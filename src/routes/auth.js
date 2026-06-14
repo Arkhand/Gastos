@@ -44,7 +44,7 @@ if (clientID && clientSecret) {
   )
 }
 
-// Middleware para proteger rutas privadas.
+// Middleware para proteger rutas privadas. Lo importan los demás controladores.
 export const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
     next()
