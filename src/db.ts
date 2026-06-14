@@ -21,11 +21,22 @@ if (supabaseUrl && supabaseServiceKey) {
   )
 }
 
+// Monedas soportadas.
+export const MONEDAS = ['ARS', 'USD'] as const
+export type Moneda = (typeof MONEDAS)[number]
+
+export function normalizarMoneda(valor: unknown): Moneda {
+  return valor === 'USD' ? 'USD' : 'ARS' // por defecto ARS
+}
+
 export interface Gasto {
   id: string
-  user_id: string
+  user_id: string // Google id de quien cargó (clave de propiedad)
+  cargado_por: string // nombre legible de quien cargó
+  a_nombre_de: string // a nombre de quién está el gasto
   descripcion: string
   monto: number
+  moneda: Moneda
   categoria: string | null
   fecha: string | null
   created_at: string
@@ -34,6 +45,8 @@ export interface Gasto {
 export interface NuevoGasto {
   descripcion: string
   monto: number
+  moneda?: unknown // se normaliza a 'ARS' | 'USD'
+  a_nombre_de?: string | null // si falta, se usa el nombre de quien carga
   categoria?: string | null
   fecha?: string | null
 }
@@ -45,7 +58,7 @@ function getClient(): SupabaseClient {
   return supabase
 }
 
-// Lista los gastos de un usuario, del más nuevo al más viejo.
+// Lista los gastos cargados por un usuario, del más nuevo al más viejo.
 export async function listarGastos(userId: string): Promise<Gasto[]> {
   const { data, error } = await getClient()
     .from('gastos')
@@ -56,14 +69,22 @@ export async function listarGastos(userId: string): Promise<Gasto[]> {
   return (data ?? []) as Gasto[]
 }
 
-// Crea un gasto para un usuario.
-export async function crearGasto(userId: string, gasto: NuevoGasto): Promise<Gasto> {
+// Crea un gasto. `userId`/`cargadoPor` identifican a quién lo cargó (desde la sesión).
+export async function crearGasto(
+  userId: string,
+  cargadoPor: string,
+  gasto: NuevoGasto
+): Promise<Gasto> {
+  const aNombreDe = gasto.a_nombre_de ? String(gasto.a_nombre_de) : cargadoPor
   const { data, error } = await getClient()
     .from('gastos')
     .insert({
       user_id: userId,
+      cargado_por: cargadoPor,
+      a_nombre_de: aNombreDe,
       descripcion: gasto.descripcion,
       monto: gasto.monto,
+      moneda: normalizarMoneda(gasto.moneda),
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
     })

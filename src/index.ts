@@ -150,29 +150,44 @@ app.get(
           (g) => `<tr>
         <td>${escapeHtml(g.fecha ?? '')}</td>
         <td>${escapeHtml(g.descripcion)}</td>
+        <td>${escapeHtml(g.a_nombre_de)}</td>
         <td>${escapeHtml(g.categoria ?? '')}</td>
-        <td style="text-align:right">$${Number(g.monto).toFixed(2)}</td>
+        <td style="text-align:right">${escapeHtml(g.moneda)} $${Number(g.monto).toFixed(2)}</td>
+        <td>${escapeHtml(g.cargado_por)}</td>
         <td><form method="post" action="/gastos/${g.id}/eliminar" onsubmit="return confirm('¿Borrar este gasto?')"><button type="submit">🗑</button></form></td>
       </tr>`
         )
         .join('')
-      const total = gastos.reduce((sum, g) => sum + Number(g.monto), 0)
+      // Totales separados por moneda (no se puede sumar ARS con USD).
+      const totales = gastos.reduce<Record<string, number>>((acc, g) => {
+        acc[g.moneda] = (acc[g.moneda] ?? 0) + Number(g.monto)
+        return acc
+      }, {})
+      const totalStr =
+        Object.entries(totales)
+          .map(([m, v]) => `${m} $${v.toFixed(2)}`)
+          .join(' — ') || '—'
       gastosHtml = `
         <h2>Mis gastos</h2>
         <form method="post" action="/gastos">
           <input name="descripcion" placeholder="Descripción" required />
           <input name="monto" type="number" step="0.01" min="0" placeholder="Monto" required />
+          <select name="moneda">
+            <option value="ARS" selected>ARS</option>
+            <option value="USD">USD</option>
+          </select>
+          <input name="a_nombre_de" placeholder="A nombre de" value="${escapeHtml(user.displayName)}" />
           <input name="categoria" placeholder="Categoría" />
           <input name="fecha" type="date" />
           <button type="submit">Agregar gasto</button>
         </form>
         <table border="1" cellpadding="6" style="border-collapse:collapse;margin-top:1rem">
           <thead>
-            <tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th></th></tr>
+            <tr><th>Fecha</th><th>Descripción</th><th>A nombre de</th><th>Categoría</th><th>Monto</th><th>Cargado por</th><th></th></tr>
           </thead>
-          <tbody>${filas || '<tr><td colspan="5">Sin gastos todavía</td></tr>'}</tbody>
+          <tbody>${filas || '<tr><td colspan="7">Sin gastos todavía</td></tr>'}</tbody>
         </table>
-        <p><strong>Total: $${total.toFixed(2)}</strong></p>`
+        <p><strong>Total: ${totalStr}</strong></p>`
     }
 
     res.type('html').send(
@@ -202,15 +217,17 @@ app.post(
       res.status(503).send('Base de datos no configurada.')
       return
     }
-    const { descripcion, monto, categoria, fecha } = req.body ?? {}
+    const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = req.body ?? {}
     const montoNum = Number(monto)
     if (!descripcion || !Number.isFinite(montoNum)) {
       res.status(400).send('Faltan datos: descripción y monto son obligatorios.')
       return
     }
-    await crearGasto(req.user!.id, {
+    await crearGasto(req.user!.id, req.user!.displayName, {
       descripcion: String(descripcion),
       monto: montoNum,
+      moneda,
+      a_nombre_de: a_nombre_de ? String(a_nombre_de) : null,
       categoria: categoria ? String(categoria) : null,
       fecha: fecha ? String(fecha) : null,
     })
@@ -252,15 +269,17 @@ app.post(
       res.status(503).json({ error: 'Base de datos no configurada' })
       return
     }
-    const { descripcion, monto, categoria, fecha } = req.body ?? {}
+    const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = req.body ?? {}
     const montoNum = Number(monto)
     if (!descripcion || !Number.isFinite(montoNum)) {
       res.status(400).json({ error: 'descripcion y monto son obligatorios' })
       return
     }
-    const gasto = await crearGasto(req.user!.id, {
+    const gasto = await crearGasto(req.user!.id, req.user!.displayName, {
       descripcion: String(descripcion),
       monto: montoNum,
+      moneda,
+      a_nombre_de: a_nombre_de ?? null,
       categoria: categoria ?? null,
       fecha: fecha ?? null,
     })
