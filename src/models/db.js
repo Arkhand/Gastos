@@ -8,7 +8,7 @@ let supabase = null
 
 if (config.supabase.enabled) {
   // La service_role key se usa SOLO del lado servidor (Express). Omite RLS, así
-  // que nunca debe exponerse al cliente. El filtrado por usuario lo hacemos acá.
+  // que nunca debe exponerse al cliente.
   supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
@@ -33,27 +33,27 @@ function getClient() {
   return supabase
 }
 
-// Lista los gastos cargados por un usuario, del más nuevo al más viejo.
-export async function listarGastos(userId) {
+// LIBRO COMPARTIDO: la app es de la familia (acceso restringido por lista blanca,
+// ver config/acceso.js), así que listar / editar / borrar operan sobre TODOS los
+// gastos, sin filtrar por usuario. Igual guardamos en cada gasto quién lo cargó
+// (cargado_por) y a nombre de quién es (a_nombre_de = quién hizo el gasto).
+// El primer parámetro `_userId` se ignora a propósito (se mantiene por compatibilidad).
+
+// Lista todos los gastos de la familia, del más nuevo al más viejo.
+export async function listarGastos(_userId) {
   const { data, error } = await getClient()
     .from('gastos')
     .select('*')
-    .eq('user_id', userId)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []
 }
 
-// Trae un solo gasto del usuario (para precargar el formulario de edición).
-export async function obtenerGasto(userId, id) {
-  const { data, error } = await getClient()
-    .from('gastos')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', userId)
-    .maybeSingle()
+// Trae un solo gasto por id (para precargar el formulario de edición).
+export async function obtenerGasto(_userId, id) {
+  const { data, error } = await getClient().from('gastos').select('*').eq('id', id).maybeSingle()
   if (error) throw error
-  return data // null si no existe o no es de este usuario
+  return data // null si no existe
 }
 
 // Crea un gasto. `userId`/`cargadoPor` identifican a quién lo cargó (desde la sesión).
@@ -77,8 +77,8 @@ export async function crearGasto(userId, cargadoPor, gasto) {
   return data
 }
 
-// Actualiza un gasto del usuario (doble filtro id + user_id por seguridad).
-export async function actualizarGasto(userId, id, gasto) {
+// Actualiza un gasto por id (libro compartido: cualquiera de la familia puede editarlo).
+export async function actualizarGasto(_userId, id, gasto) {
   const { data, error } = await getClient()
     .from('gastos')
     .update({
@@ -90,19 +90,14 @@ export async function actualizarGasto(userId, id, gasto) {
       fecha: gasto.fecha ?? null,
     })
     .eq('id', id)
-    .eq('user_id', userId)
     .select()
     .maybeSingle()
   if (error) throw error
   return data
 }
 
-// Borra un gasto, garantizando que pertenezca al usuario (doble filtro id + user_id).
-export async function eliminarGasto(userId, id) {
-  const { error } = await getClient()
-    .from('gastos')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', userId)
+// Borra un gasto por id (libro compartido).
+export async function eliminarGasto(_userId, id) {
+  const { error } = await getClient().from('gastos').delete().eq('id', id)
   if (error) throw error
 }

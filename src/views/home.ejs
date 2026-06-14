@@ -62,7 +62,7 @@
                 <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
                 <span class="exp-mid">
                   <span class="exp-desc"><%= g.descripcion %></span>
-                  <span class="exp-cat"><%= c.label %></span>
+                  <span class="exp-cat"><% if (g.a_nombre_de) { %><%= g.a_nombre_de %> · <% } %><%= c.label %></span>
                 </span>
                 <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
               </button>
