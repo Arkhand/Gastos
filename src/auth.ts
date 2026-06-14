@@ -19,38 +19,42 @@ declare global {
 const clientID = process.env.GOOGLE_CLIENT_ID
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 
-if (!clientID || !clientSecret) {
-  console.warn(
-    '[auth] Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET. ' +
-      'El login con Google no funcionará hasta configurar esas variables de entorno.'
-  )
-}
+// Si faltan las credenciales el login queda deshabilitado, pero la app NO crashea:
+// las rutas públicas siguen funcionando y /auth/google devuelve un 503 claro.
+export const googleEnabled = Boolean(clientID && clientSecret)
 
 // Sin base de datos todavía: guardamos el perfil completo en la cookie de sesión.
 passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user: Express.User, done) => done(null, user))
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: clientID ?? '',
-      clientSecret: clientSecret ?? '',
-      // URL relativa: se resuelve contra el host real del request (localhost o
-      // Vercel) gracias a `app.set('trust proxy', true)` en index.ts. Así no hay
-      // que hardcodear el dominio y funciona en local y en producción.
-      callbackURL: '/auth/google/callback',
-    },
-    (_accessToken, _refreshToken, profile: Profile, done) => {
-      const user: Express.User = {
-        id: profile.id,
-        displayName: profile.displayName,
-        email: profile.emails?.[0]?.value,
-        photo: profile.photos?.[0]?.value,
+if (clientID && clientSecret) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID,
+        clientSecret,
+        // URL relativa: se resuelve contra el host real del request (localhost o
+        // Vercel) gracias a `app.set('trust proxy', true)` en index.ts. Así no hay
+        // que hardcodear el dominio y funciona en local y en producción.
+        callbackURL: '/auth/google/callback',
+      },
+      (_accessToken, _refreshToken, profile: Profile, done) => {
+        const user: Express.User = {
+          id: profile.id,
+          displayName: profile.displayName,
+          email: profile.emails?.[0]?.value,
+          photo: profile.photos?.[0]?.value,
+        }
+        done(null, user)
       }
-      done(null, user)
-    }
+    )
   )
-)
+} else {
+  console.warn(
+    '[auth] Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET. ' +
+      'El login con Google está deshabilitado hasta configurar esas variables de entorno.'
+  )
+}
 
 // Middleware para proteger rutas privadas.
 export const requireAuth: RequestHandler = (req, res, next) => {
@@ -70,15 +74,26 @@ export const requireAuth: RequestHandler = (req, res, next) => {
 export const authRouter = Router()
 
 // Inicia el flujo: redirige a la pantalla de Google.
-authRouter.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-)
+authRouter.get('/google', (req, res, next) => {
+  if (!googleEnabled) {
+    res
+      .status(503)
+      .send('Login con Google no configurado: faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET.')
+    return
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next)
+})
 
 // Google vuelve acá con el código; Passport lo intercambia por el perfil.
 authRouter.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/?error=auth' }),
+  (req, res, next) => {
+    if (!googleEnabled) {
+      res.redirect('/')
+      return
+    }
+    passport.authenticate('google', { failureRedirect: '/?error=auth' })(req, res, next)
+  },
   (_req, res) => res.redirect('/perfil')
 )
 
