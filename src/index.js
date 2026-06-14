@@ -1,11 +1,13 @@
 import express from 'express'
 import path from 'path'
 import cookieSession from 'cookie-session'
-import passport from 'passport'
 
+import { config } from './config/env.js'
+import passport from './config/passport.js' // al importarse, configura Passport
 import { authRouter } from './routes/auth.js'
 import { paginasRouter } from './routes/paginas.js'
 import { gastosRouter } from './routes/gastos.js'
+import { errorHandler } from './middlewares/errorHandler.js'
 
 const app = express()
 
@@ -13,9 +15,9 @@ const app = express()
 // (lo usa la callbackURL relativa de Google) y para setear bien la cookie `secure`.
 app.set('trust proxy', true)
 
-// --- Motor de vistas (EJS): las vistas viven en src/views/*.ejs, separadas del código.
-// Anclamos la ruta en process.cwd() (raíz del proyecto) porque es lo confiable
-// dentro de la función serverless de Vercel.
+// --- Motor de vistas (EJS): las vistas viven en src/views/*.ejs, separadas del
+// código. Anclamos la ruta en process.cwd() (raíz del proyecto) porque es lo
+// confiable dentro de la función serverless de Vercel.
 app.set('view engine', 'ejs')
 app.set('views', path.join(process.cwd(), 'src', 'views'))
 
@@ -27,11 +29,11 @@ app.use(express.urlencoded({ extended: true }))
 app.use(
   cookieSession({
     name: 'session',
-    keys: [process.env.SESSION_SECRET ?? 'dev-secret-cambiame-en-produccion'],
+    keys: [config.sessionSecret],
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
     httpOnly: true,
     sameSite: 'lax', // permite que la cookie viaje en el redirect de vuelta desde Google
-    secure: process.env.NODE_ENV === 'production', // solo por HTTPS en producción
+    secure: config.isProduction, // solo por HTTPS en producción
   })
 )
 
@@ -50,20 +52,12 @@ app.use((req, _res, next) => {
 app.use(passport.initialize())
 app.use(passport.session())
 
-// --- Controladores (routers) ---
+// --- Rutas (cada router define URLs; la lógica vive en controllers/) ---
 app.use('/auth', authRouter) // login: /auth/google, /auth/google/callback, /auth/logout
 app.use('/', paginasRouter) // páginas: /, /about, /perfil, /api-data, /healthz
 app.use('/', gastosRouter) // gastos: /gastos, /api/gastos, /api/me
 
 // --- Manejador de errores (último middleware) ---
-app.use((err, req, res, _next) => {
-  console.error('[error]', err)
-  if (res.headersSent) return
-  if (req.path.startsWith('/api')) {
-    res.status(500).json({ error: 'Error interno' })
-  } else {
-    res.status(500).send('Error interno')
-  }
-})
+app.use(errorHandler)
 
 export default app

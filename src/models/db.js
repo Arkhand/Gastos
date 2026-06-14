@@ -1,17 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+import { config } from '../config/env.js'
 
 // Si faltan las variables, la DB queda deshabilitada pero la app NO crashea.
-export const dbEnabled = Boolean(supabaseUrl && supabaseServiceKey)
+export const dbEnabled = config.supabase.enabled
 
 let supabase = null
 
-if (supabaseUrl && supabaseServiceKey) {
+if (config.supabase.enabled) {
   // La service_role key se usa SOLO del lado servidor (Express). Omite RLS, así
   // que nunca debe exponerse al cliente. El filtrado por usuario lo hacemos acá.
-  supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 } else {
