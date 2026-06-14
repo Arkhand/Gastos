@@ -1,28 +1,37 @@
-// Personas a las que se puede cargar un gasto ("a nombre de quién").
-// Son solo dos: Daniel y Daniela. La IA mapea sinónimos dichos por voz a una
-// de estas (o "Desconocido" si no lo puede distinguir, y ahí el front obliga a
-// elegir a mano). Un solo lugar: lo usan el segmented button de la hoja, el
-// controlador y el esquema que le pedimos a Gemini.
+// Personas del libro compartido (a nombre de quién es el gasto).
+// En la BD guardamos el EMAIL (dato formal/canónico), pero en la app mostramos
+// un label amable ("Dani Hombre" / "Dani Mujer"). Un solo lugar: lo usan el
+// segmented de la hoja, los controladores, las vistas y el esquema de Gemini.
 export const PERSONAS = [
-  { id: 'Daniel', label: 'Daniel', emoji: '👨' },
-  { id: 'Daniela', label: 'Daniela', emoji: '👩' },
+  { id: 'musiald@gmail.com', label: 'Dani Hombre', emoji: '👨', alias: ['daniel', 'dani hombre', 'el', 'él', 'varon', 'varón', 'hombre'] },
+  { id: 'danielapaulacastelli@gmail.com', label: 'Dani Mujer', emoji: '👩', alias: ['daniela', 'dani mujer', 'ella', 'mujer'] },
 ]
 
+// Ids canónicos = los emails (lo que se guarda en a_nombre_de).
 export const PERSONA_IDS = PERSONAS.map((p) => p.id)
 
-// Valores que la IA puede devolver (incluye el "no sé").
+// Valores que la IA puede devolver: los emails + "Desconocido" si no lo sabe.
 export const PERSONA_ENUM = [...PERSONA_IDS, 'Desconocido']
 
-// Normaliza un valor recibido del form o de la IA. Devuelve null si no es válido
-// (incluido "Desconocido"), para que el front sepa que falta elegir.
+// Normaliza un valor (email, label, alias o nombre viejo) al EMAIL canónico.
+// Devuelve null si no matchea (incluido "Desconocido"), para que el front pida elegir.
 export function normalizarPersona(valor) {
-  return PERSONA_IDS.includes(valor) ? valor : null
+  if (!valor) return null
+  const v = String(valor).trim().toLowerCase()
+  for (const p of PERSONAS) {
+    if (v === p.id.toLowerCase() || v === p.label.toLowerCase() || p.alias.includes(v)) return p.id
+  }
+  return null
 }
 
-// Persona preseleccionada según quién está logueado: la cuenta de Daniela
-// arranca en "Daniela"; cualquier otra (incluida la de Daniel) arranca en "Daniel".
+// Email (o lo que haya) -> label para mostrar. Si no lo reconoce, devuelve el valor tal cual.
+export function personaLabel(valor) {
+  const id = normalizarPersona(valor)
+  if (id) return PERSONAS.find((p) => p.id === id).label
+  return valor ? String(valor) : ''
+}
+
+// Persona preseleccionada según quién está logueado (su propio email).
 export function personaPorDefecto(email) {
-  return String(email || '').toLowerCase() === 'danielapaulacastelli@gmail.com'
-    ? 'Daniela'
-    : 'Daniel'
+  return normalizarPersona(email) || PERSONAS[0].id
 }

@@ -14,6 +14,7 @@
   var deleteForm = document.getElementById('sheet-delete-form')
   var sheetTitle = document.getElementById('sheet-title')
   var heard = document.getElementById('sheet-heard')
+  var saveBtn = form ? form.querySelector('.btn-save') : null
 
   var desc = document.getElementById('f-descripcion')
   var monto = document.getElementById('f-monto')
@@ -25,7 +26,7 @@
   var personaSeg = document.getElementById('persona-seg')
   var fPersona = document.getElementById('f-persona')
   // Persona preseleccionada según el usuario logueado (la define el servidor).
-  var personaDefault = (personaSeg && personaSeg.getAttribute('data-default')) || 'Daniel'
+  var personaDefault = (personaSeg && personaSeg.getAttribute('data-default')) || ''
   var fFecha = document.getElementById('f-fecha')
   var fechaInput = document.getElementById('f-fecha-input')
   var datePills = document.getElementById('date-pills')
@@ -168,14 +169,17 @@
   }
 
   function selectPersona(p) {
-    var val = p === 'Daniel' || p === 'Daniela' ? p : ''
-    if (fPersona) fPersona.value = val
+    // Validamos contra las opciones presentes (los data-persona son emails).
+    var val = ''
     if (personaSeg) {
       var opts = personaSeg.querySelectorAll('.seg-opt')
       for (var i = 0; i < opts.length; i++) {
-        opts[i].classList.toggle('is-on', opts[i].getAttribute('data-persona') === val)
+        var on = !!p && opts[i].getAttribute('data-persona') === p
+        opts[i].classList.toggle('is-on', on)
+        if (on) val = p
       }
     }
+    if (fPersona) fPersona.value = val
   }
 
   function selectDatePill(kind) {
@@ -244,6 +248,7 @@
     resetForm()
     if (form) form.action = '/nuevo'
     if (sheetTitle) sheetTitle.textContent = 'Nuevo gasto'
+    if (saveBtn) saveBtn.textContent = 'Guardar gasto'
     if (heard) heard.textContent = ''
     if (deleteForm) deleteForm.style.display = 'none'
     openSheet()
@@ -262,6 +267,7 @@
     setFecha(row.getAttribute('data-fecha'))
     if (form) form.action = '/gastos/' + id + '/editar'
     if (sheetTitle) sheetTitle.textContent = 'Editar gasto'
+    if (saveBtn) saveBtn.textContent = 'Guardar edición'
     if (heard) heard.textContent = ''
     if (deleteForm) {
       deleteForm.action = '/gastos/' + id + '/eliminar'
@@ -440,13 +446,23 @@
     toast('success', 'Cargado a nombre de ' + fnombre + ' · ' + fmonto, {
       label: 'Editar',
       onClick: function () {
-        var row = document.querySelector('.exp-row-btn[data-id="' + fid + '"]')
-        if (row) openEdit(row)
+        // La edición vive en Resumen ahora.
+        window.location.href = '/resumen?edit=' + encodeURIComponent(fid)
       },
     })
     // Limpiamos ?ok= de la URL para que un refresh no repita el toast.
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', '/inicio')
+    }
+  }
+
+  // Si llegamos a /resumen?edit=<id> (desde el toast de carga), abrimos esa edición.
+  if (sheet) {
+    var editId = new URLSearchParams(window.location.search).get('edit')
+    if (editId) {
+      var editRow = document.querySelector('.exp-row-btn[data-id="' + editId + '"]')
+      if (editRow) openEdit(editRow)
+      if (window.history && window.history.replaceState) window.history.replaceState({}, '', '/resumen')
     }
   }
 })()

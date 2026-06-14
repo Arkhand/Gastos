@@ -8,11 +8,7 @@
       <div class="res-total-amount"><%= totalMes %></div>
     </div>
 
-    <% if (!dbEnabled) { %>
-      <div class="recent-empty">Base de datos no configurada todavía.</div>
-    <% } else if (filas.length === 0) { %>
-      <div class="recent-empty">Todavía no hay gastos en pesos este mes.</div>
-    <% } else { %>
+    <% if (dbEnabled && filas.length > 0) { %>
       <% filas.forEach(function (c) { %>
         <div class="res-cat">
           <span class="res-cat-emoji cat-<%= c.id %>"><%= c.emoji %></span>
@@ -21,8 +17,48 @@
         </div>
       <% }) %>
     <% } %>
+
+    <!-- Lista editable: tocá un gasto para editarlo o borrarlo -->
+    <div class="recent-head" style="margin-top:22px">Todos los gastos</div>
+    <% if (!dbEnabled) { %>
+      <div class="recent-empty">Base de datos no configurada todavía.</div>
+    <% } else if (grupos.length === 0) { %>
+      <div class="recent-empty">Sin gastos todavía.</div>
+    <% } else { %>
+      <% grupos.forEach(function (grupo) { %>
+        <div class="day-group">
+          <div class="day-row">
+            <span class="day-label"><%= grupo.etiqueta %></span>
+            <span class="day-total"><%= grupo.totalStr %></span>
+          </div>
+          <div class="day-card">
+            <% grupo.items.forEach(function (g) { var c = catById(g.categoria); var pl = personaLabel(g.a_nombre_de) %>
+              <button
+                type="button"
+                class="exp-row exp-row-btn"
+                data-id="<%= g.id %>"
+                data-descripcion="<%= g.descripcion %>"
+                data-monto="<%= g.monto %>"
+                data-moneda="<%= g.moneda %>"
+                data-nombre="<%= g.a_nombre_de || '' %>"
+                data-categoria="<%= c.id %>"
+                data-fecha="<%= g.fecha || '' %>"
+              >
+                <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
+                <span class="exp-mid">
+                  <span class="exp-desc"><%= g.descripcion %></span>
+                  <span class="exp-cat"><% if (pl) { %><%= pl %> · <% } %><%= c.label %></span>
+                </span>
+                <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
   </div>
 
+  <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault }) %>
   <%- include('partials/tabbar', { tab: 'stats' }) %>
 </div>
 <%- include('partials/footer') %>

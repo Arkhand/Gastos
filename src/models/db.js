@@ -33,38 +33,38 @@ function getClient() {
   return supabase
 }
 
-// LIBRO COMPARTIDO: la app es de la familia (acceso restringido por lista blanca,
-// ver config/acceso.js), así que listar / editar / borrar operan sobre TODOS los
-// gastos, sin filtrar por usuario. Igual guardamos en cada gasto quién lo cargó
-// (cargado_por) y a nombre de quién es (a_nombre_de = quién hizo el gasto).
-// El primer parámetro `_userId` se ignora a propósito (se mantiene por compatibilidad).
+// LIBRO COMPARTIDO + BORRADO LÓGICO:
+// - La app es de la familia (acceso por lista blanca), así que se opera sobre TODOS
+//   los gastos, sin filtrar por usuario (el primer parámetro `_userId` se ignora).
+// - Nada se borra físicamente: `eliminado=true` marca de baja. Editar = baja lógica
+//   del registro anterior + alta de uno nuevo, así queda el historial completo.
 
-// Lista todos los gastos de la familia, del más nuevo al más viejo.
+// Lista los gastos activos (no eliminados), del más nuevo al más viejo.
 export async function listarGastos(_userId) {
   const { data, error } = await getClient()
     .from('gastos')
     .select('*')
+    .eq('eliminado', false)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []
 }
 
-// Trae un solo gasto por id (para precargar el formulario de edición).
+// Trae un gasto por id (sin importar si está eliminado o no).
 export async function obtenerGasto(_userId, id) {
   const { data, error } = await getClient().from('gastos').select('*').eq('id', id).maybeSingle()
   if (error) throw error
-  return data // null si no existe
+  return data
 }
 
 // Crea un gasto. `userId`/`cargadoPor` identifican a quién lo cargó (desde la sesión).
 export async function crearGasto(userId, cargadoPor, gasto) {
-  const aNombreDe = gasto.a_nombre_de ? String(gasto.a_nombre_de) : cargadoPor
   const { data, error } = await getClient()
     .from('gastos')
     .insert({
       user_id: userId,
       cargado_por: cargadoPor,
-      a_nombre_de: aNombreDe,
+      a_nombre_de: gasto.a_nombre_de ?? null,
       descripcion: gasto.descripcion,
       monto: gasto.monto,
       moneda: normalizarMoneda(gasto.moneda),
@@ -77,27 +77,37 @@ export async function crearGasto(userId, cargadoPor, gasto) {
   return data
 }
 
-// Actualiza un gasto por id (libro compartido: cualquiera de la familia puede editarlo).
+// Editar = baja lógica del registro anterior + alta de uno nuevo (mantiene historial).
 export async function actualizarGasto(_userId, id, gasto) {
-  const { data, error } = await getClient()
+  const sb = getClient()
+  // 1. Traemos el registro anterior (para conservar quién lo cargó).
+  const { data: anterior, error: e0 } = await sb.from('gastos').select('*').eq('id', id).maybeSingle()
+  if (e0) throw e0
+  if (!anterior) return null
+  // 2. Baja lógica del anterior (queda en el historial).
+  const { error: e1 } = await sb.from('gastos').update({ eliminado: true }).eq('id', id)
+  if (e1) throw e1
+  // 3. Alta del nuevo con los datos editados.
+  const { data, error: e2 } = await sb
     .from('gastos')
-    .update({
+    .insert({
+      user_id: anterior.user_id,
+      cargado_por: anterior.cargado_por,
+      a_nombre_de: gasto.a_nombre_de ?? anterior.a_nombre_de,
       descripcion: gasto.descripcion,
       monto: gasto.monto,
       moneda: normalizarMoneda(gasto.moneda),
-      a_nombre_de: gasto.a_nombre_de,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
     })
-    .eq('id', id)
     .select()
-    .maybeSingle()
-  if (error) throw error
+    .single()
+  if (e2) throw e2
   return data
 }
 
-// Borra un gasto por id (libro compartido).
+// Borrado lógico: marca el gasto como eliminado (no se borra físicamente).
 export async function eliminarGasto(_userId, id) {
-  const { error } = await getClient().from('gastos').delete().eq('id', id)
+  const { error } = await getClient().from('gastos').update({ eliminado: true }).eq('id', id)
   if (error) throw error
 }

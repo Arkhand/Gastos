@@ -35,7 +35,7 @@ function construirPrompt(texto) {
     '- monto: número en la moneda detectada. Entendé "mil", "lucas", "palos", "k" y el formato es-AR (el punto separa miles: "2.500" = 2500). Si no se dice un monto, devolvé 0.',
     '- moneda: "USD" solo si menciona dólares o usd; si no, "ARS".',
     `- categoria: una de estas exactamente: ${CATEGORIA_IDS.join(', ')}. Si no encaja, "otros".`,
-    '- persona: a nombre de quién fue el gasto. "Daniel" si dice Daniel, "él", "el varón" o nombres de varón; "Daniela" si dice Daniela, "ella", "la mujer" o nombres de mujer. Si solo dice "Dani" (ambiguo) o no menciona a nadie, devolvé "Desconocido".',
+    '- persona: a nombre de quién fue el gasto, devuelto como EMAIL. Usá "musiald@gmail.com" si dice Daniel, "él", "el varón" o un nombre de varón; "danielapaulacastelli@gmail.com" si dice Daniela, "ella", "la mujer" o un nombre de mujer. Si solo dice "Dani" (ambiguo) o no menciona a nadie, devolvé "Desconocido".',
     '- fecha: en formato YYYY-MM-DD.',
     '',
     `Frase: "${texto}"`,

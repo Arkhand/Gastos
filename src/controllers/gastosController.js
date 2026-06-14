@@ -1,5 +1,5 @@
-// Controlador de la app logueada: inicio (mascota + voz + lista), resumen,
-// nosotros, y las acciones crear / actualizar / eliminar.
+// Controlador de la app logueada: inicio (mascota + voz + lista solo lectura),
+// resumen (totales + lista editable), nosotros, y crear / actualizar / eliminar.
 import {
   dbEnabled,
   listarGastos,
@@ -8,7 +8,7 @@ import {
   eliminarGasto,
 } from '../models/db.js'
 import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.js'
-import { PERSONAS, personaPorDefecto } from '../config/personas.js'
+import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { hoyAR, ayerAR } from '../utils/fecha.js'
 
@@ -41,7 +41,6 @@ function agruparPorDia(gastos) {
     if (!grupos.has(fecha)) grupos.set(fecha, [])
     grupos.get(fecha).push(g)
   }
-  // Los gastos ya vienen ordenados por created_at desc.
   return [...grupos.entries()].map(([fecha, items]) => ({
     fecha,
     etiqueta: fecha === hoy ? 'Hoy' : fecha === ayer ? 'Ayer' : fecha,
@@ -50,7 +49,8 @@ function agruparPorDia(gastos) {
   }))
 }
 
-// Lee y valida los campos de un gasto desde el body del formulario (la hoja).
+// Lee y valida los campos de un gasto desde el body (la hoja). a_nombre_de se
+// normaliza al email canónico de la persona (o null si no es válido).
 function leerGastoDelBody(body) {
   const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = body ?? {}
   const montoNum = Number(monto)
@@ -63,25 +63,25 @@ function leerGastoDelBody(body) {
       descripcion: String(descripcion),
       monto: montoNum,
       moneda,
-      a_nombre_de: a_nombre_de ? String(a_nombre_de) : null,
+      a_nombre_de: normalizarPersona(a_nombre_de),
       categoria: normalizarCategoria(categoria),
       fecha: fecha ? String(fecha) : null,
     },
   }
 }
 
-// --- Pantalla principal: inicio (mascota + micrófono + últimos gastos) ---
+// --- Inicio: mascota + micrófono + últimos gastos (SOLO LECTURA, no se edita acá) ---
 export const home = async (req, res, next) => {
   try {
     let gastos = []
     if (dbEnabled) gastos = await listarGastos(req.user.id)
     const hoy = hoyAR()
     const totalHoy = totalesPorMoneda(gastos.filter((g) => (g.fecha || hoy) === hoy))
-    // Si venimos de crear/editar (?ok=<id>), armamos el dato para el toast de éxito.
+    // Si venimos de crear (?ok=<id>), armamos el dato para el toast de éxito.
     let creado = null
     if (req.query.ok) {
       const g = gastos.find((x) => String(x.id) === String(req.query.ok))
-      if (g) creado = { id: g.id, aNombreDe: g.a_nombre_de, montoStr: fmtMonto(g.moneda, g.monto) }
+      if (g) creado = { id: g.id, aNombreDe: personaLabel(g.a_nombre_de), montoStr: fmtMonto(g.moneda, g.monto) }
     }
     res.render('home', {
       user: req.user,
@@ -91,6 +91,7 @@ export const home = async (req, res, next) => {
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),
       catById,
+      personaLabel,
       fmt: fmtMonto,
       grupos: agruparPorDia(gastos),
       totalHoy,
@@ -113,7 +114,8 @@ export const crear = async (req, res, next) => {
       res.redirect('/inicio')
       return
     }
-    const nuevo = await crearGasto(req.user.id, req.user.displayName, r.datos)
+    const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email) }
+    const nuevo = await crearGasto(req.user.id, req.user.displayName, datos)
     res.redirect('/inicio?ok=' + encodeURIComponent(nuevo.id))
   } catch (err) {
     next(err)
@@ -128,12 +130,12 @@ export const actualizar = async (req, res, next) => {
     }
     const r = leerGastoDelBody(req.body)
     if (!r.ok) {
-      res.redirect('/inicio')
+      res.redirect('/resumen')
       return
     }
-    const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? req.user.displayName }
+    const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email) }
     await actualizarGasto(req.user.id, req.params.id, datos)
-    res.redirect('/inicio?ok=' + encodeURIComponent(req.params.id))
+    res.redirect('/resumen')
   } catch (err) {
     next(err)
   }
@@ -146,13 +148,13 @@ export const eliminar = async (req, res, next) => {
       return
     }
     await eliminarGasto(req.user.id, req.params.id)
-    res.redirect('/inicio')
+    res.redirect('/resumen')
   } catch (err) {
     next(err)
   }
 }
 
-// --- Resumen: totales por categoría del mes en curso (ARS) ---
+// --- Resumen: totales por categoría del mes + lista editable de gastos ---
 export const resumen = async (req, res, next) => {
   try {
     let gastos = []
@@ -173,6 +175,13 @@ export const resumen = async (req, res, next) => {
       dbEnabled,
       filas,
       totalMes: fmtMonto('ARS', totalMes),
+      categorias: CATEGORIAS,
+      personas: PERSONAS,
+      personaDefault: personaPorDefecto(req.user.email),
+      catById,
+      personaLabel,
+      fmt: fmtMonto,
+      grupos: agruparPorDia(gastos),
       tab: 'stats',
     })
   } catch (err) {
@@ -180,7 +189,7 @@ export const resumen = async (req, res, next) => {
   }
 }
 
-// --- Nosotros: pantalla estática con la familia (chibis de CSS) ---
+// --- Nosotros: pantalla estática con la familia ---
 export const nosotros = (req, res) => {
   res.render('nosotros', { user: req.user, tab: 'us' })
 }
