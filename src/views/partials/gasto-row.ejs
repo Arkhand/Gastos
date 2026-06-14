@@ -1,0 +1,22 @@
+<%# Fila de un gasto. Diseño ÚNICO usado en Inicio (solo lectura) y Resumen.
+     Pasale { g, editable }. Si editable=true, agrega el lápiz para editar.
+     Usa los helpers catById / personaLabel / fmt (locals compartidos). %>
+<% var c = catById(g.categoria); var pl = personaLabel(g.a_nombre_de) %>
+<div class="exp-row"
+  data-id="<%= g.id %>"
+  data-descripcion="<%= g.descripcion %>"
+  data-monto="<%= g.monto %>"
+  data-moneda="<%= g.moneda %>"
+  data-nombre="<%= g.a_nombre_de || '' %>"
+  data-categoria="<%= c.id %>"
+  data-fecha="<%= g.fecha || '' %>">
+  <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
+  <span class="exp-mid">
+    <span class="exp-desc"><%= g.descripcion %></span>
+    <span class="exp-cat"><% if (pl) { %><%= pl %> · <% } %><%= c.label %></span>
+  </span>
+  <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
+  <% if (typeof editable !== 'undefined' && editable) { %>
+    <button type="button" class="exp-edit" aria-label="Editar gasto">✏️</button>
+  <% } %>
+</div>

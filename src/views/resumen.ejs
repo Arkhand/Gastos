@@ -3,59 +3,73 @@
   <div class="resumen">
     <h1>Resumen</h1>
 
-    <div class="res-total">
-      <div class="res-total-label">Gastado este mes (ARS)</div>
-      <div class="res-total-amount"><%= totalMes %></div>
+    <!-- Cambia entre la lista de gastos y los gráficos -->
+    <div class="segmented vista-seg" id="vista-seg">
+      <button type="button" class="seg-opt is-on" data-vista="gastos">Gastos</button>
+      <button type="button" class="seg-opt" data-vista="graficos">Gráficos</button>
     </div>
 
-    <% if (dbEnabled && filas.length > 0) { %>
-      <% filas.forEach(function (c) { %>
-        <div class="res-cat">
-          <span class="res-cat-emoji cat-<%= c.id %>"><%= c.emoji %></span>
-          <span class="res-cat-name"><%= c.label %></span>
-          <span class="res-cat-amount">$ <%= c.total.toLocaleString('es-AR') %></span>
-        </div>
-      <% }) %>
-    <% } %>
+    <!-- ===== Vista: Gastos (lista editable con lápiz) ===== -->
+    <div class="vista is-on" id="vista-gastos">
+      <% if (!dbEnabled) { %>
+        <div class="recent-empty">Base de datos no configurada todavía.</div>
+      <% } else if (grupos.length === 0) { %>
+        <div class="recent-empty">Sin gastos todavía.</div>
+      <% } else { %>
+        <% grupos.forEach(function (grupo) { %>
+          <div class="day-group">
+            <div class="day-row">
+              <span class="day-label"><%= grupo.etiqueta %></span>
+              <span class="day-total"><%= grupo.totalStr %></span>
+            </div>
+            <div class="day-card">
+              <% grupo.items.forEach(function (g) { %>
+                <%- include('partials/gasto-row', { g: g, editable: true }) %>
+              <% }) %>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
 
-    <!-- Lista editable: tocá un gasto para editarlo o borrarlo -->
-    <div class="recent-head" style="margin-top:22px">Todos los gastos</div>
-    <% if (!dbEnabled) { %>
-      <div class="recent-empty">Base de datos no configurada todavía.</div>
-    <% } else if (grupos.length === 0) { %>
-      <div class="recent-empty">Sin gastos todavía.</div>
-    <% } else { %>
-      <% grupos.forEach(function (grupo) { %>
-        <div class="day-group">
-          <div class="day-row">
-            <span class="day-label"><%= grupo.etiqueta %></span>
-            <span class="day-total"><%= grupo.totalStr %></span>
-          </div>
-          <div class="day-card">
-            <% grupo.items.forEach(function (g) { var c = catById(g.categoria); var pl = personaLabel(g.a_nombre_de) %>
-              <button
-                type="button"
-                class="exp-row exp-row-btn"
-                data-id="<%= g.id %>"
-                data-descripcion="<%= g.descripcion %>"
-                data-monto="<%= g.monto %>"
-                data-moneda="<%= g.moneda %>"
-                data-nombre="<%= g.a_nombre_de || '' %>"
-                data-categoria="<%= c.id %>"
-                data-fecha="<%= g.fecha || '' %>"
-              >
-                <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
-                <span class="exp-mid">
-                  <span class="exp-desc"><%= g.descripcion %></span>
-                  <span class="exp-cat"><% if (pl) { %><%= pl %> · <% } %><%= c.label %></span>
-                </span>
-                <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
-              </button>
-            <% }) %>
+    <!-- ===== Vista: Gráficos (torta + barras por categoría) ===== -->
+    <div class="vista" id="vista-graficos">
+      <div class="res-total">
+        <div class="res-total-label">Gastado este mes (ARS)</div>
+        <div class="res-total-amount"><%= totalMes %></div>
+      </div>
+
+      <% if (filas.length === 0) { %>
+        <div class="recent-empty">No hay gastos en pesos este mes para graficar.</div>
+      <% } else { %>
+        <div class="chart-card">
+          <div class="chart-title">Distribución por categoría</div>
+          <div class="pie-wrap">
+            <div class="pie" style="background: <%= pieGradient %>"></div>
+            <div class="pie-legend">
+              <% filas.forEach(function (c) { %>
+                <div class="leg-item">
+                  <span class="leg-dot cat-<%= c.id %>"></span>
+                  <span class="leg-name"><%= c.emoji %> <%= c.label %></span>
+                  <span class="leg-pct"><%= c.pct %>%</span>
+                </div>
+              <% }) %>
+            </div>
           </div>
         </div>
-      <% }) %>
-    <% } %>
+
+        <div class="chart-card">
+          <div class="chart-title">Ranking por categoría</div>
+          <% filas.forEach(function (c) { %>
+            <div class="bar-row">
+              <span class="bar-name"><%= c.emoji %> <%= c.label %></span>
+              <span class="bar-track"><span class="bar-fill cat-<%= c.id %>" style="width: <%= Math.max(c.pct, 3) %>%"></span></span>
+              <span class="bar-val">$ <%= c.total.toLocaleString('es-AR') %></span>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
   </div>
 
   <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault }) %>

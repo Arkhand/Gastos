@@ -166,15 +166,28 @@ export const resumen = async (req, res, next) => {
       const id = g.categoria || 'otros'
       porCat[id] = (porCat[id] ?? 0) + Number(g.monto)
     }
-    const filas = CATEGORIAS.map((c) => ({ ...c, total: porCat[c.id] ?? 0 }))
+    const filasBase = CATEGORIAS.map((c) => ({ ...c, total: porCat[c.id] ?? 0 }))
       .filter((c) => c.total > 0)
       .sort((a, b) => b.total - a.total)
-    const totalMes = filas.reduce((s, c) => s + c.total, 0)
+    const totalMesNum = filasBase.reduce((s, c) => s + c.total, 0)
+    const filas = filasBase.map((c) => ({
+      ...c,
+      pct: totalMesNum ? Math.round((c.total / totalMesNum) * 100) : 0,
+    }))
+    // Gradiente para el gráfico de torta (grados exactos por categoría).
+    let deg = 0
+    const stops = filasBase.map((c) => {
+      const start = deg
+      deg += totalMesNum ? (c.total / totalMesNum) * 360 : 0
+      return `var(--c-${c.id}) ${start.toFixed(2)}deg ${deg.toFixed(2)}deg`
+    })
+    const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--c-otros)'
     res.render('resumen', {
       user: req.user,
       dbEnabled,
       filas,
-      totalMes: fmtMonto('ARS', totalMes),
+      totalMes: fmtMonto('ARS', totalMesNum),
+      pieGradient,
       categorias: CATEGORIAS,
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),

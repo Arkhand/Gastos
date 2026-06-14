@@ -47,15 +47,8 @@
             <span class="day-total"><%= grupo.totalStr %></span>
           </div>
           <div class="day-card">
-            <% grupo.items.forEach(function (g) { var c = catById(g.categoria); var pl = personaLabel(g.a_nombre_de) %>
-              <div class="exp-row">
-                <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
-                <span class="exp-mid">
-                  <span class="exp-desc"><%= g.descripcion %></span>
-                  <span class="exp-cat"><% if (pl) { %><%= pl %> · <% } %><%= c.label %></span>
-                </span>
-                <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
-              </div>
+            <% grupo.items.forEach(function (g) { %>
+              <%- include('partials/gasto-row', { g: g, editable: false }) %>
             <% }) %>
           </div>
         </div>

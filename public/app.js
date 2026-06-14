@@ -321,10 +321,13 @@
     for (var i = 0; i < closers.length; i++) closers[i].addEventListener('click', closeSheet)
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet() })
 
-    // Filas de la lista -> editar
-    var rows = document.querySelectorAll('.exp-row-btn')
-    for (var j = 0; j < rows.length; j++) {
-      rows[j].addEventListener('click', function () { openEdit(this) })
+    // Lápiz de cada fila -> editar (la fila NO es clickeable, solo el lápiz)
+    var editBtns = document.querySelectorAll('.exp-edit')
+    for (var j = 0; j < editBtns.length; j++) {
+      editBtns[j].addEventListener('click', function () {
+        var row = this.closest('.exp-row')
+        if (row) openEdit(row)
+      })
     }
   }
 
@@ -460,9 +463,25 @@
   if (sheet) {
     var editId = new URLSearchParams(window.location.search).get('edit')
     if (editId) {
-      var editRow = document.querySelector('.exp-row-btn[data-id="' + editId + '"]')
+      var editRow = document.querySelector('.exp-row[data-id="' + editId + '"]')
       if (editRow) openEdit(editRow)
       if (window.history && window.history.replaceState) window.history.replaceState({}, '', '/resumen')
     }
+  }
+
+  // ============ Resumen: alternar Gastos / Gráficos ============
+  var vistaSeg = document.getElementById('vista-seg')
+  if (vistaSeg) {
+    vistaSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-opt')
+      if (!b) return
+      var v = b.getAttribute('data-vista')
+      var opts = vistaSeg.querySelectorAll('.seg-opt')
+      for (var i = 0; i < opts.length; i++) opts[i].classList.toggle('is-on', opts[i] === b)
+      var vg = document.getElementById('vista-gastos')
+      var vgr = document.getElementById('vista-graficos')
+      if (vg) vg.classList.toggle('is-on', v === 'gastos')
+      if (vgr) vgr.classList.toggle('is-on', v === 'graficos')
+    })
   }
 })()
