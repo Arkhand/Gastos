@@ -3,7 +3,7 @@
 // versión vieja del estilo o del código mientras seguimos iterando el diseño,
 // y nunca se mezclan datos entre usuarios.
 
-const CACHE = 'gastos-static-v2'
+const CACHE = 'gastos-static-v3'
 const ASSETS = [
   '/icon-192.png',
   '/icon-512.png',

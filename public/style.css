@@ -52,7 +52,7 @@ a { color:inherit; }
 }
 
 .hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:8px 22px 4px; }
-.hdr-title { font-family:var(--font-d); font-weight:700; font-size:30px; line-height:1; }
+.hdr-title { font-family:var(--font-d); font-weight:700; font-size:26px; line-height:1.05; }
 .hdr-sub { font-size:13px; color:var(--ink-soft); margin-top:5px; max-width:180px; }
 .hdr-total { text-align:right; background:#fff; border-radius:18px; padding:8px 14px; box-shadow:0 4px 12px rgba(120,90,60,.1); }
 .hdr-total-label { font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
