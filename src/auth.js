@@ -1,20 +1,8 @@
-import { Router, type RequestHandler } from 'express'
+import { Router } from 'express'
 import passport from 'passport'
-import { Strategy as GoogleStrategy, type Profile } from 'passport-google-oauth20'
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 
-// Forma del usuario que guardamos en la sesión. Augmenta el tipo de Passport
-// para que `req.user` tenga estos campos en todo el proyecto.
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface User {
-      id: string
-      displayName: string
-      email?: string
-      photo?: string
-    }
-  }
-}
+// Forma del usuario que guardamos en la sesión: { id, displayName, email, photo }.
 
 const clientID = process.env.GOOGLE_CLIENT_ID
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -23,9 +11,9 @@ const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 // las rutas públicas siguen funcionando y /auth/google devuelve un 503 claro.
 export const googleEnabled = Boolean(clientID && clientSecret)
 
-// Sin base de datos todavía: guardamos el perfil completo en la cookie de sesión.
+// Sin base de datos de usuarios: guardamos el perfil completo en la cookie de sesión.
 passport.serializeUser((user, done) => done(null, user))
-passport.deserializeUser((user: Express.User, done) => done(null, user))
+passport.deserializeUser((user, done) => done(null, user))
 
 if (clientID && clientSecret) {
   passport.use(
@@ -34,12 +22,12 @@ if (clientID && clientSecret) {
         clientID,
         clientSecret,
         // URL relativa: se resuelve contra el host real del request (localhost o
-        // Vercel) gracias a `app.set('trust proxy', true)` en index.ts. Así no hay
+        // Vercel) gracias a `app.set('trust proxy', true)` en index.js. Así no hay
         // que hardcodear el dominio y funciona en local y en producción.
         callbackURL: '/auth/google/callback',
       },
-      (_accessToken, _refreshToken, profile: Profile, done) => {
-        const user: Express.User = {
+      (_accessToken, _refreshToken, profile, done) => {
+        const user = {
           id: profile.id,
           displayName: profile.displayName,
           email: profile.emails?.[0]?.value,
@@ -57,7 +45,7 @@ if (clientID && clientSecret) {
 }
 
 // Middleware para proteger rutas privadas.
-export const requireAuth: RequestHandler = (req, res, next) => {
+export const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
     next()
     return
@@ -70,7 +58,7 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   res.redirect('/')
 }
 
-// Router con las rutas de autenticación (se monta bajo /auth en index.ts).
+// Router con las rutas de autenticación (se monta bajo /auth en index.js).
 export const authRouter = Router()
 
 // Inicia el flujo: redirige a la pantalla de Google.

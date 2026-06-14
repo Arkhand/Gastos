@@ -1,4 +1,4 @@
-import express, { type RequestHandler } from 'express'
+import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import cookieSession from 'cookie-session'
@@ -36,10 +36,7 @@ app.use(
 // implementa. Este shim los agrega como no-op. Es seguro con cookie-session:
 // la sesión vive firmada del lado del cliente, no hay session id que fijar.
 app.use((req, _res, next) => {
-  const session = req.session as unknown as {
-    regenerate?: (cb: (err?: unknown) => void) => void
-    save?: (cb: (err?: unknown) => void) => void
-  } | null
+  const session = req.session
   if (session) {
     if (typeof session.regenerate !== 'function') session.regenerate = (cb) => cb()
     if (typeof session.save !== 'function') session.save = (cb) => cb()
@@ -54,17 +51,15 @@ app.use(passport.session())
 app.use('/auth', authRouter)
 
 // --- Helpers ---
-function escapeHtml(value: string): string {
+function escapeHtml(value) {
   return value.replace(
     /[&<>"']/g,
     (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        c
-      ] as string
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   )
 }
 
-function page(title: string, body: string): string {
+function page(title, body) {
   return `<!doctype html>
 <html lang="es">
   <head>
@@ -87,10 +82,8 @@ function page(title: string, body: string): string {
 }
 
 // Envuelve handlers async para que sus errores lleguen al manejador de errores.
-const asyncHandler =
-  (fn: RequestHandler): RequestHandler =>
-  (req, res, next) =>
-    Promise.resolve(fn(req, res, next)).catch(next)
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next)
 
 // --- Rutas públicas ---
 app.get('/', (req, res) => {
@@ -138,9 +131,9 @@ app.get(
   '/perfil',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const user = req.user!
+    const user = req.user
 
-    let gastosHtml: string
+    let gastosHtml
     if (!dbEnabled) {
       gastosHtml = '<h2>Mis gastos</h2><p><em>Base de datos no configurada todavía.</em></p>'
     } else {
@@ -159,7 +152,7 @@ app.get(
         )
         .join('')
       // Totales separados por moneda (no se puede sumar ARS con USD).
-      const totales = gastos.reduce<Record<string, number>>((acc, g) => {
+      const totales = gastos.reduce((acc, g) => {
         acc[g.moneda] = (acc[g.moneda] ?? 0) + Number(g.monto)
         return acc
       }, {})
@@ -223,7 +216,7 @@ app.post(
       res.status(400).send('Faltan datos: descripción y monto son obligatorios.')
       return
     }
-    await crearGasto(req.user!.id, req.user!.displayName, {
+    await crearGasto(req.user.id, req.user.displayName, {
       descripcion: String(descripcion),
       monto: montoNum,
       moneda,
@@ -243,7 +236,7 @@ app.post(
       res.status(503).send('Base de datos no configurada.')
       return
     }
-    await eliminarGasto(req.user!.id, req.params.id)
+    await eliminarGasto(req.user.id, req.params.id)
     res.redirect('/perfil')
   })
 )
@@ -257,7 +250,7 @@ app.get(
       res.status(503).json({ error: 'Base de datos no configurada' })
       return
     }
-    res.json({ gastos: await listarGastos(req.user!.id) })
+    res.json({ gastos: await listarGastos(req.user.id) })
   })
 )
 
@@ -275,7 +268,7 @@ app.post(
       res.status(400).json({ error: 'descripcion y monto son obligatorios' })
       return
     }
-    const gasto = await crearGasto(req.user!.id, req.user!.displayName, {
+    const gasto = await crearGasto(req.user.id, req.user.displayName, {
       descripcion: String(descripcion),
       monto: montoNum,
       moneda,
@@ -295,7 +288,7 @@ app.delete(
       res.status(503).json({ error: 'Base de datos no configurada' })
       return
     }
-    await eliminarGasto(req.user!.id, req.params.id)
+    await eliminarGasto(req.user.id, req.params.id)
     res.status(204).end()
   })
 )
@@ -306,21 +299,14 @@ app.get('/api/me', requireAuth, (req, res) => {
 })
 
 // --- Manejador de errores (último middleware) ---
-app.use(
-  (
-    err: unknown,
-    req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    console.error('[error]', err)
-    if (res.headersSent) return
-    if (req.path.startsWith('/api')) {
-      res.status(500).json({ error: 'Error interno' })
-    } else {
-      res.status(500).send('Error interno')
-    }
+app.use((err, req, res, _next) => {
+  console.error('[error]', err)
+  if (res.headersSent) return
+  if (req.path.startsWith('/api')) {
+    res.status(500).json({ error: 'Error interno' })
+  } else {
+    res.status(500).send('Error interno')
   }
-)
+})
 
 export default app
