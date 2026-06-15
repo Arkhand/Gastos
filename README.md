@@ -31,7 +31,7 @@ Pantalla principal. Mascota animada ("Chubi") + un **micrófono**: la voz se tra
 
 Debajo, los **últimos gastos agrupados por día** (Hoy / Ayer / fecha), con el total de cada día. Esta vista es **solo lectura**: no se edita acá.
 
-> Si la IA no está disponible (sin `GEMINI_API_KEY` o sin cuota), la voz cae a **modo manual**: rellena la descripción con lo transcripto y completás el resto a mano.
+> La interpretación prueba varios modelos en orden (Groq primero, Gemini de respaldo; ver `src/models/ia.js`): si uno se queda sin cuota, pasa al siguiente. Si **ninguno** está disponible, la voz cae a **modo manual**: rellena la descripción con lo transcripto y completás el resto a mano.
 
 ### 📊 Resumen (`/resumen`)
 Tiene un **selector de mes** (‹ Junio 2026 ›; nunca futuro) y un toggle **Gastos | Gráficos**:
@@ -88,8 +88,9 @@ Ver [`.env.example`](.env.example). Se leen **todas** en un único lugar: [`src/
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Login con Google | Sí (sin esto, el login queda deshabilitado) |
 | `SESSION_SECRET` | Firmar la cookie de sesión | Sí en producción (en local hay un default inseguro) |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Base de datos (solo servidor) | Sí (sin esto, la DB queda deshabilitada pero la app no crashea) |
-| `GEMINI_API_KEY` | Interpretar la voz con IA | No (sin esto, la voz cae a modo manual) |
-| `GEMINI_MODEL` | Modelo de Gemini | No (default `gemini-2.5-flash`) |
+| `GROQ_API_KEY` | Interpretar la voz con IA (proveedor preferido) | No (sin esto, se usa Gemini) |
+| `GEMINI_API_KEY` | Interpretar la voz con IA (respaldo de Groq) | No (sin esto, la voz cae a modo manual) |
+| `IA_MODELOS` | Orden de modelos a probar (`proveedor:modelo` por coma) | No (default: Groq + 3 de Gemini) |
 | `ALLOWED_EMAILS` | Lista blanca de emails (coma) | No (default: la familia, en `acceso.js`) |
 
 > La app está hecha para **degradar con gracia**: si falta Supabase o Gemini, no rompe — muestra avisos y deshabilita esa parte.
