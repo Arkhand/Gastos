@@ -369,6 +369,12 @@ body.sheet-open .sheet { transform:translateX(-50%) translateY(0); }
 .bar-track { flex:1; height:14px; background:#efe7dd; border-radius:8px; overflow:hidden; }
 .bar-fill { display:block; height:100%; background:var(--bg,#ccc); border-radius:8px; }
 .bar-val { font-family:var(--font-d); font-weight:600; font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+.persona-row { display:flex; align-items:center; justify-content:space-between; padding:9px 2px; border-bottom:1px solid rgba(0,0,0,.05); }
+.persona-row:last-child { border-bottom:none; }
+.persona-name { font-family:var(--font-d); font-weight:500; font-size:15px; }
+.persona-tot { text-align:right; display:flex; flex-direction:column; }
+.persona-ars { font-family:var(--font-d); font-weight:600; color:var(--ink); font-size:15px; }
+.persona-usd { font-size:12px; color:var(--ink-soft); }
 
 /* ---------- Segmented (a nombre de quién) ---------- */
 .segmented { display:flex; gap:8px; }

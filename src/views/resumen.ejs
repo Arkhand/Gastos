@@ -39,6 +39,21 @@
         <div class="res-total-amount"><%= totalMes %></div>
       </div>
 
+      <% if (personasTotales.length > 0) { %>
+        <div class="chart-card">
+          <div class="chart-title">Total por persona</div>
+          <% personasTotales.forEach(function (p) { %>
+            <div class="persona-row">
+              <span class="persona-name"><%= p.emoji %> <%= p.label %></span>
+              <span class="persona-tot">
+                <span class="persona-ars"><%= p.arsStr %></span>
+                <span class="persona-usd"><%= p.usdStr %></span>
+              </span>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
       <% if (filas.length === 0) { %>
         <div class="recent-empty">No hay gastos en pesos este mes para graficar.</div>
       <% } else { %>

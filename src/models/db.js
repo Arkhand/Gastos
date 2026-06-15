@@ -68,6 +68,8 @@ export async function crearGasto(userId, cargadoPor, gasto) {
       descripcion: gasto.descripcion,
       monto: gasto.monto,
       moneda: normalizarMoneda(gasto.moneda),
+      monto_ars: gasto.monto_ars ?? null,
+      monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
     })
@@ -97,6 +99,8 @@ export async function actualizarGasto(_userId, id, gasto) {
       descripcion: gasto.descripcion,
       monto: gasto.monto,
       moneda: normalizarMoneda(gasto.moneda),
+      monto_ars: gasto.monto_ars ?? null,
+      monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
     })

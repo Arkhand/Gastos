@@ -10,6 +10,7 @@ import {
 import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.js'
 import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
+import { obtenerCotizacion, convertirMontos } from '../models/cotizacion.js'
 import { hoyAR, ayerAR } from '../utils/fecha.js'
 
 // Formatea un monto con su signo de moneda (es-AR: el punto separa miles).
@@ -114,7 +115,12 @@ export const crear = async (req, res, next) => {
       res.redirect('/inicio')
       return
     }
-    const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email) }
+    const rate = await obtenerCotizacion()
+    const datos = {
+      ...r.datos,
+      a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email),
+      ...convertirMontos(r.datos.moneda, r.datos.monto, rate),
+    }
     const nuevo = await crearGasto(req.user.id, req.user.displayName, datos)
     res.redirect('/inicio?ok=' + encodeURIComponent(nuevo.id))
   } catch (err) {
@@ -133,7 +139,12 @@ export const actualizar = async (req, res, next) => {
       res.redirect('/resumen')
       return
     }
-    const datos = { ...r.datos, a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email) }
+    const rate = await obtenerCotizacion()
+    const datos = {
+      ...r.datos,
+      a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email),
+      ...convertirMontos(r.datos.moneda, r.datos.monto, rate),
+    }
     await actualizarGasto(req.user.id, req.params.id, datos)
     res.redirect('/resumen')
   } catch (err) {
@@ -182,12 +193,29 @@ export const resumen = async (req, res, next) => {
       return `var(--c-${c.id}) ${start.toFixed(2)}deg ${deg.toFixed(2)}deg`
     })
     const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--c-otros)'
+    // Total por persona (ARS y USD), sumando los montos convertidos del mes.
+    const mesGastos = gastos.filter((g) => (g.fecha || '').slice(0, 7) === mes)
+    const porPersona = {}
+    for (const g of mesGastos) {
+      const id = normalizarPersona(g.a_nombre_de)
+      if (!id) continue
+      if (!porPersona[id]) porPersona[id] = { ars: 0, usd: 0 }
+      porPersona[id].ars += Number(g.monto_ars) || 0
+      porPersona[id].usd += Number(g.monto_usd) || 0
+    }
+    const personasTotales = PERSONAS.filter((p) => porPersona[p.id]).map((p) => ({
+      label: p.label,
+      emoji: p.emoji,
+      arsStr: fmtMonto('ARS', porPersona[p.id].ars),
+      usdStr: fmtMonto('USD', porPersona[p.id].usd),
+    }))
     res.render('resumen', {
       user: req.user,
       dbEnabled,
       filas,
       totalMes: fmtMonto('ARS', totalMesNum),
       pieGradient,
+      personasTotales,
       categorias: CATEGORIAS,
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),
