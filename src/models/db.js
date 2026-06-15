@@ -1,5 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
 import { config } from '../config/env.js'
+
+// supabase-js inicializa su componente Realtime (WebSocket) al crear el cliente,
+// aunque acá solo usemos consultas REST. Node < 22 no trae `WebSocket` nativo
+// (en local corremos Node 20; en Vercel, Node 24 sí lo tiene), así que le damos
+// el de `ws` SOLO cuando falta el nativo. En producción no se toca nada.
+if (typeof globalThis.WebSocket === 'undefined') globalThis.WebSocket = ws
 
 // Si faltan las variables, la DB queda deshabilitada pero la app NO crashea.
 export const dbEnabled = config.supabase.enabled

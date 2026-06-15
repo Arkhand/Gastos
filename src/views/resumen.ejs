@@ -3,15 +3,13 @@
   <div class="resumen">
     <h1>Resumen</h1>
 
-    <!-- Navegador de mes -->
+    <!-- Selector de mes: solo meses con datos cargados, de mayor a menor -->
     <div class="mes-nav">
-      <a class="mes-arrow" data-mes="<%= prevMes %>" href="/resumen?mes=<%= prevMes %>&vista=<%= vista %>" aria-label="Mes anterior">‹</a>
-      <span class="mes-label"><%= mesNombre %></span>
-      <% if (showNext) { %>
-        <a class="mes-arrow" data-mes="<%= nextMes %>" href="/resumen?mes=<%= nextMes %>&vista=<%= vista %>" aria-label="Mes siguiente">›</a>
-      <% } else { %>
-        <span class="mes-arrow mes-arrow-off">›</span>
-      <% } %>
+      <select class="mes-select" id="mes-select" aria-label="Elegir mes">
+        <% meses.forEach(function (m) { %>
+          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.label %></option>
+        <% }) %>
+      </select>
     </div>
 
     <!-- Cambia entre la lista de gastos y los gráficos -->

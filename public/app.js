@@ -488,10 +488,16 @@
         url.searchParams.set('vista', v)
         window.history.replaceState({}, '', url)
       } catch (_) {}
-      var arrows = document.querySelectorAll('.mes-arrow[data-mes]')
-      for (var k = 0; k < arrows.length; k++) {
-        arrows[k].href = '/resumen?mes=' + arrows[k].getAttribute('data-mes') + '&vista=' + v
-      }
+    })
+  }
+
+  // ============ Resumen: selector de mes (solo meses con datos) ============
+  var mesSelect = document.getElementById('mes-select')
+  if (mesSelect) {
+    mesSelect.addEventListener('change', function () {
+      var vista = 'gastos'
+      try { vista = new URL(window.location.href).searchParams.get('vista') || 'gastos' } catch (_) {}
+      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) + '&vista=' + vista
     })
   }
 })()

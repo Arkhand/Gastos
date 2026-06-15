@@ -1,0 +1,2 @@
+- [Vercel deployment](vercel-deployment.md) — prod URL https://gastos-danis.vercel.app, Express app, why vercel.json forces framework=express
+- [Supabase](supabase.md) — project ref eagnsivzummrzqvzubkv, tabla gastos, RLS sin políticas (service_role), MCP conectado

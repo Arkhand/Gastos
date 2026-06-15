@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "App de gastos en Express sobre Vercel, con login de Google (Passport) y Supabase.",
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "watch": "vercel dev --listen 3000"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -13,6 +15,7 @@
     "ejs": "^6.0.1",
     "express": "^4.18.2",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "ws": "^8.21.0"
   }
 }

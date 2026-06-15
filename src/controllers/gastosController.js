@@ -11,7 +11,7 @@ import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.j
 import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { obtenerCotizacion, convertirMontos } from '../models/cotizacion.js'
-import { hoyAR, ayerAR, mesLabel, mesAnterior, mesSiguiente } from '../utils/fecha.js'
+import { hoyAR, ayerAR, mesLabel } from '../utils/fecha.js'
 
 // Formatea un monto con su signo de moneda (es-AR: el punto separa miles).
 function fmtMonto(moneda, valor) {
@@ -176,6 +176,13 @@ export const resumen = async (req, res, next) => {
     const mesReq = String(req.query.mes || '')
     const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
     const vista = req.query.vista === 'graficos' ? 'graficos' : 'gastos'
+    // Meses con datos cargados (YYYY-MM distintos), de mayor a menor. Incluye el
+    // mes elegido aunque no tenga gastos, para que el selector lo refleje.
+    const mesesSet = new Set(gastos.map((g) => (g.fecha || hoy).slice(0, 7)))
+    mesesSet.add(mes)
+    const meses = [...mesesSet]
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((m) => ({ value: m, label: mesLabel(m) }))
     // Gastos del mes elegido (sin fecha = cuenta como hoy).
     const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
     const porCat = {}
@@ -230,10 +237,7 @@ export const resumen = async (req, res, next) => {
       fmt: fmtMonto,
       grupos: agruparPorDia(gastosMes),
       mes,
-      mesNombre: mesLabel(mes),
-      prevMes: mesAnterior(mes),
-      nextMes: mesSiguiente(mes),
-      showNext: mes < mesActual,
+      meses,
       vista,
       tab: 'stats',
     })
