@@ -30,7 +30,7 @@ app.use(
   cookieSession({
     name: 'session',
     keys: [config.sessionSecret],
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+    maxAge: 90 * 24 * 60 * 60 * 1000, // 90 días (3 meses)
     httpOnly: true,
     sameSite: 'lax', // permite que la cookie viaje en el redirect de vuelta desde Google
     secure: config.isProduction, // solo por HTTPS en producción
