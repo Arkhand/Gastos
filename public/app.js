@@ -15,9 +15,9 @@
   var sheetTitle = document.getElementById('sheet-title')
   var heard = document.getElementById('sheet-heard')
   var saveBtn = form ? form.querySelector('.btn-save') : null
-  // Carga manual: estado de la revisión IA que corre al guardar.
-  var revisando = false            // evita doble submit mientras corre la IA
-  var revisadoParaGuardar = false  // ya revisamos: dejá pasar el submit nativo
+  // Marca que el guardado vino de la voz (ya categorizado por la IA): así NO se
+  // dispara la corrección manual "de fondo" al recargar.
+  var revisadoParaGuardar = false
 
   var desc = document.getElementById('f-descripcion')
   var monto = document.getElementById('f-monto')
@@ -246,50 +246,84 @@
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
   }
 
-  // Revisión IA al guardar una carga manual: pule local, pide a /api/revisar que
-  // corrija descripción + categoría, aplica y reenvía el form. NUNCA bloquea: si la
-  // IA falla / tarda / está apagada, guarda igual con el pulido local.
-  async function revisarAntesDeGuardar() {
-    if (revisando) return
-    revisando = true
-    var origCat = fCategoria ? fCategoria.value : 'otros'
-    // baseDesc = pulido local (sin IA). Es la base para comparar: el globo
-    // "Corregí: …" solo debe reflejar lo que aportó la IA, no la capitalización.
-    var baseDesc = polishLocal(desc ? desc.value : '')
-    if (desc) desc.value = baseDesc
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Revisando…' }
-    setChubi('thinking')
+  // Actualiza una fila ya guardada con la corrección de la IA, SIN recargar. Lee el
+  // emoji/etiqueta de la categoría de los chips que ya están en la hoja.
+  function actualizarFila(id, descripcion, catId) {
+    var row = document.querySelector('.exp-row[data-id="' + id + '"]')
+    if (!row) return
+    var chip = catChips ? catChips.querySelector('.chip[data-cat="' + catId + '"]') : null
+    var emojiEl = chip ? chip.querySelector('.chip-emoji') : null
+    var emoji = emojiEl ? emojiEl.textContent : ''
+    var catLabel = chip ? chip.textContent.replace(emoji, '').trim() : catId
+    var dEl = row.querySelector('.exp-desc')
+    if (dEl) dEl.textContent = descripcion
+    var eEl = row.querySelector('.exp-emoji')
+    if (eEl) { eEl.textContent = emoji; eEl.className = 'exp-emoji cat-' + catId }
+    var cEl = row.querySelector('.exp-cat')
+    if (cEl) {
+      var t = cEl.textContent
+      var persona = t.indexOf(' · ') > -1 ? t.split(' · ')[0] : ''
+      cEl.textContent = (persona ? persona + ' · ' : '') + catLabel
+    }
+    row.setAttribute('data-descripcion', descripcion)
+    row.setAttribute('data-categoria', catId)
+  }
+
+  // POST de la corrección puntual (aplicar o deshacer). Devuelve true si quedó ok.
+  function aplicarCorreccion(id, descripcion, categoria) {
+    return fetch('/api/gastos/' + id + '/corregir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descripcion: descripcion, categoria: categoria }),
+    }).then(function (r) { return r.ok }).catch(function () { return false })
+  }
+
+  // Corrección "de fondo": el gasto ya se guardó. Le pedimos a la IA que revise la
+  // descripción/categoría y, si cambia algo, lo aplicamos sin recargar y avisamos con
+  // opción de Deshacer. Nunca molesta: si la IA falla/tarda, queda lo guardado.
+  var corrigiendo = false
+  async function corregirEnFondo(id) {
+    if (corrigiendo) return
+    var row = document.querySelector('.exp-row[data-id="' + id + '"]')
+    if (!row) return
+    var origDesc = row.getAttribute('data-descripcion') || ''
+    var origCat = row.getAttribute('data-categoria') || 'otros'
+    if (origDesc.trim().length < 3) return
+    corrigiendo = true
     var ctrl = new AbortController()
     var to = setTimeout(function () { try { ctrl.abort() } catch (_) {} }, 6000)
     try {
       var res = await fetch('/api/revisar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion: baseDesc.trim(), categoria: origCat }),
+        body: JSON.stringify({ descripcion: origDesc, categoria: origCat }),
         signal: ctrl.signal,
       })
       clearTimeout(to)
-      if (res.ok) {
-        var data = await res.json()
-        if (data && data.ok) {
-          if (data.descripcion && data.descripcion.trim() && desc) desc.value = data.descripcion.trim()
-          if (data.categoria && data.categoria !== origCat) selectChip(data.categoria)
-        }
-      }
-    } catch (_) { clearTimeout(to) }
-    // Si la IA cambió la descripción (más allá del pulido local), lo mostramos tras recargar.
-    try {
-      if (desc && desc.value !== baseDesc) {
-        sessionStorage.setItem('ia-revision', JSON.stringify({ t: Date.now(), antes: baseDesc }))
-      }
-    } catch (_) {}
-    // Recuperamos la UI ANTES de reenviar: si los campos quedaron inválidos
-    // mientras corría la IA, el submit no navega y la hoja sigue usable.
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar gasto' }
-    setChubi('idle')
-    revisando = false
-    revisadoParaGuardar = true
-    if (form) { form.requestSubmit ? form.requestSubmit() : form.submit() }
+      if (!res.ok) return
+      var data = await res.json()
+      if (!data || !data.ok) return
+      var nuevaDesc = (data.descripcion && data.descripcion.trim()) || origDesc
+      var nuevaCat = data.categoria || origCat
+      if (nuevaDesc === origDesc && nuevaCat === origCat) return // nada que corregir
+      if (!(await aplicarCorreccion(id, nuevaDesc, nuevaCat))) return
+      actualizarFila(id, nuevaDesc, nuevaCat)
+      var msg = nuevaDesc !== origDesc
+        ? '✨ Corregí: «' + origDesc + '» → «' + nuevaDesc + '»'
+        : '✨ Ajusté la categoría'
+      toast('success', msg, {
+        label: 'Deshacer',
+        onClick: function () {
+          aplicarCorreccion(id, origDesc, origCat).then(function (ok) {
+            if (ok) { actualizarFila(id, origDesc, origCat); toast('success', 'Lo dejé como estaba') }
+          })
+        },
+      })
+    } catch (_) {
+      clearTimeout(to)
+    } finally {
+      corrigiendo = false
+    }
   }
 
   // Qué campos obligatorios faltan en la hoja (para warnings). Devuelve etiquetas.
@@ -384,13 +418,14 @@
         focoEn(faltan[0])
         return
       }
-      // Solo gastos NUEVOS cargados a mano, con IA activa y aún no revisados: la IA
-      // corrige la descripción y la categoría antes de guardar. (Los de voz ya vienen
-      // categorizados y marcan revisadoParaGuardar; las ediciones postean a /editar.)
+      // Carga manual NUEVA con IA activa (no voz, no edición): dejamos una marca para
+      // que, ya guardado y recargado, la IA revise typos/categoría "de fondo".
       var iaOn = form.getAttribute('data-ia') === 'true'
-      if (revisadoParaGuardar || !iaOn || form.action.indexOf('/nuevo') === -1) return
-      e.preventDefault()
-      revisarAntesDeGuardar()
+      if (!revisadoParaGuardar && iaOn && form.action.indexOf('/nuevo') !== -1) {
+        // Timestamp para que la marca no quede colgada si este guardado falla.
+        try { sessionStorage.setItem('ia-revisar-pending', String(Date.now())) } catch (_) {}
+      }
+      // No interceptamos: el gasto se guarda ya (y recarga).
     })
 
     // Pulido local instantáneo al salir del campo descripción (sin red).
@@ -590,18 +625,17 @@
     // Mostramos lo que escuchó en el globo de Chubi: junto al toast del resultado,
     // da el contexto completo para controlar a la IA.
     if (save && save.heard) setBubble('Escuché: «' + save.heard + '»', false)
-    // Carga manual revisada por IA: mostramos qué corrigió en la descripción (la
-    // categoría ya se ve por el emoji del toast). Solo si es reciente y cambió.
+    // Carga manual nueva: revisamos typos/categoría "de fondo" sobre el gasto ya
+    // guardado y, si hay cambios, avisamos con Deshacer (sin recargar).
+    var pend = false
     try {
-      var rawRev = sessionStorage.getItem('ia-revision')
-      sessionStorage.removeItem('ia-revision')
-      if (rawRev) {
-        var rev = JSON.parse(rawRev)
-        if (rev && (Date.now() - rev.t) < 15000 && rev.antes && rev.antes !== fdesc) {
-          setBubble('Corregí: «' + rev.antes + '» → «' + fdesc + '»', false)
-        }
-      }
+      var pt = sessionStorage.getItem('ia-revisar-pending')
+      sessionStorage.removeItem('ia-revisar-pending')
+      pend = !!pt && (Date.now() - Number(pt)) < 15000
     } catch (_) {}
+    // Solo carga manual reciente: si el guardado vino de la voz (ia-save presente),
+    // no corregimos de fondo (la voz ya categorizó).
+    if (pend && fid && !save) corregirEnFondo(fid)
     // Limpiamos ?ok= de la URL para que un refresh no repita el toast.
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', '/inicio')

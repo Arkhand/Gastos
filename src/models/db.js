@@ -117,6 +117,18 @@ export async function actualizarGasto(_userId, id, gasto) {
   return data
 }
 
+// Corrección puntual de la IA (carga manual): actualiza SOLO descripción y
+// categoría in situ. A diferencia de actualizarGasto (baja+alta), mantiene el id
+// y el created_at, así la fila no se reordena y se puede deshacer con el mismo id.
+export async function corregirGasto(_userId, id, { descripcion, categoria }) {
+  const { error } = await getClient()
+    .from('gastos')
+    .update({ descripcion, categoria })
+    .eq('id', id)
+    .eq('eliminado', false)
+  if (error) throw error
+}
+
 // Borrado lógico: marca el gasto como eliminado (no se borra físicamente).
 export async function eliminarGasto(_userId, id) {
   const { error } = await getClient().from('gastos').update({ eliminado: true }).eq('id', id)

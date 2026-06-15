@@ -5,6 +5,7 @@ import {
   home,
   crear,
   actualizar,
+  corregir,
   eliminar,
   resumen,
   nosotros,
@@ -28,6 +29,9 @@ gastosRouter.post('/api/interpretar', requireAuth, interpretar)
 
 // IA: revisa la descripción (typos/formato) y la categoría de una carga manual
 gastosRouter.post('/api/revisar', requireAuth, revisar)
+
+// IA (de fondo): aplica/deshace la corrección sobre un gasto ya creado (solo desc+cat)
+gastosRouter.post('/api/gastos/:id/corregir', requireAuth, corregir)
 
 // Compatibilidad con atajos/bookmarks viejos -> al inicio
 gastosRouter.get(['/nuevo', '/gastos', '/gastos/:id/editar'], requireAuth, (_req, res) =>

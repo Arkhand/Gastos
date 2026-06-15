@@ -5,6 +5,7 @@ import {
   listarGastos,
   crearGasto,
   actualizarGasto,
+  corregirGasto,
   eliminarGasto,
 } from '../models/db.js'
 import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.js'
@@ -92,7 +93,13 @@ export const home = async (req, res, next) => {
     let gastos = []
     if (dbEnabled) gastos = await listarGastos(req.user.id)
     const hoy = hoyAR()
-    const totalHoy = totalesPorMoneda(gastos.filter((g) => (g.fecha || hoy) === hoy))
+    // Total de hoy SIEMPRE en pesos: sumamos el equivalente ARS de cada gasto (los
+    // USD ya vienen convertidos por dólar bolsa en monto_ars). Así el header no
+    // mezcla dos monedas, que se veía mal.
+    const totalHoyArs = gastos
+      .filter((g) => (g.fecha || hoy) === hoy)
+      .reduce((s, g) => s + (Number(g.monto_ars) || (g.moneda === 'ARS' ? Number(g.monto) : 0)), 0)
+    const totalHoy = fmtMonto('ARS', totalHoyArs)
     // Si venimos de crear (?ok=<id>), armamos el dato para el toast de éxito.
     let creado = null
     if (req.query.ok) {
@@ -188,6 +195,28 @@ export const eliminar = async (req, res, next) => {
     }
     await eliminarGasto(req.user.id, req.params.id)
     res.redirect('/resumen')
+  } catch (err) {
+    next(err)
+  }
+}
+
+// POST /api/gastos/:id/corregir  { descripcion, categoria }  ->  { ok:true } | { error }
+// Aplica (vía fetch, sin navegar) la corrección de la IA sobre un gasto recién
+// creado: actualiza solo descripción + categoría. También sirve para deshacerla.
+export const corregir = async (req, res, next) => {
+  try {
+    if (!dbEnabled) {
+      res.status(503).json({ error: 'Base de datos no configurada.' })
+      return
+    }
+    const descripcion = (req.body?.descripcion ?? '').toString().trim()
+    if (!descripcion) {
+      res.status(400).json({ error: 'Descripción vacía' })
+      return
+    }
+    const categoria = normalizarCategoria((req.body?.categoria ?? '').toString())
+    await corregirGasto(req.user.id, req.params.id, { descripcion, categoria })
+    res.json({ ok: true })
   } catch (err) {
     next(err)
   }
