@@ -15,6 +15,9 @@
   var sheetTitle = document.getElementById('sheet-title')
   var heard = document.getElementById('sheet-heard')
   var saveBtn = form ? form.querySelector('.btn-save') : null
+  // Carga manual: estado de la revisión IA que corre al guardar.
+  var revisando = false            // evita doble submit mientras corre la IA
+  var revisadoParaGuardar = false  // ya revisamos: dejá pasar el submit nativo
 
   var desc = document.getElementById('f-descripcion')
   var monto = document.getElementById('f-monto')
@@ -97,6 +100,10 @@
     if (!h) {
       h = document.createElement('div')
       h.id = 'toast-host'
+      // Lectores de pantalla: como el guardado por voz no abre ninguna hoja, el
+      // toast es la única confirmación; lo anunciamos al vuelo.
+      h.setAttribute('role', 'status')
+      h.setAttribute('aria-live', 'polite')
       document.body.appendChild(h)
     }
     return h
@@ -116,6 +123,7 @@
     el.appendChild(ico)
     el.appendChild(txt)
     var dismissed = false
+    var btn = null
     function dismiss() {
       if (dismissed) return
       dismissed = true
@@ -125,7 +133,7 @@
       setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el) }, 240)
     }
     if (action && action.label) {
-      var btn = document.createElement('button')
+      btn = document.createElement('button')
       btn.type = 'button'
       btn.className = 'toast-act'
       btn.textContent = action.label
@@ -137,9 +145,17 @@
     }
     host.appendChild(el)
     beep(type)
+    // Vibración corta al confirmar (guardado por voz = manos/ojos ocupados).
+    if (type === 'success' && navigator.vibrate) { try { navigator.vibrate(12) } catch (_) {} }
     requestAnimationFrame(function () { el.classList.add('is-in') })
-    // Los toasts duran ~2s; los que traen botón (Editar) un poco más para poder tocarlo.
-    var timer = setTimeout(dismiss, action ? 4000 : 2000)
+    // Los normales duran ~2.5s; los que traen acción (Editar) 6s, para leer lo que
+    // hizo la IA y tocar el botón con calma.
+    var timer = setTimeout(dismiss, action ? 6000 : 2500)
+    // Tocar el cuerpo del toast lo cierra antes (el botón de acción tiene el suyo).
+    el.addEventListener('click', function (e) {
+      if (e.target === btn) return
+      dismiss()
+    })
     return el
   }
 
@@ -224,6 +240,58 @@
     setFecha(g.fecha)
   }
 
+  // Pulido local instantáneo (sin IA): recorta espacios y capitaliza la inicial.
+  function polishLocal(s) {
+    s = (s || '').trim().replace(/\s+/g, ' ')
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+  }
+
+  // Revisión IA al guardar una carga manual: pule local, pide a /api/revisar que
+  // corrija descripción + categoría, aplica y reenvía el form. NUNCA bloquea: si la
+  // IA falla / tarda / está apagada, guarda igual con el pulido local.
+  async function revisarAntesDeGuardar() {
+    if (revisando) return
+    revisando = true
+    var origCat = fCategoria ? fCategoria.value : 'otros'
+    // baseDesc = pulido local (sin IA). Es la base para comparar: el globo
+    // "Corregí: …" solo debe reflejar lo que aportó la IA, no la capitalización.
+    var baseDesc = polishLocal(desc ? desc.value : '')
+    if (desc) desc.value = baseDesc
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Revisando…' }
+    setChubi('thinking')
+    var ctrl = new AbortController()
+    var to = setTimeout(function () { try { ctrl.abort() } catch (_) {} }, 6000)
+    try {
+      var res = await fetch('/api/revisar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion: baseDesc.trim(), categoria: origCat }),
+        signal: ctrl.signal,
+      })
+      clearTimeout(to)
+      if (res.ok) {
+        var data = await res.json()
+        if (data && data.ok) {
+          if (data.descripcion && data.descripcion.trim() && desc) desc.value = data.descripcion.trim()
+          if (data.categoria && data.categoria !== origCat) selectChip(data.categoria)
+        }
+      }
+    } catch (_) { clearTimeout(to) }
+    // Si la IA cambió la descripción (más allá del pulido local), lo mostramos tras recargar.
+    try {
+      if (desc && desc.value !== baseDesc) {
+        sessionStorage.setItem('ia-revision', JSON.stringify({ t: Date.now(), antes: baseDesc }))
+      }
+    } catch (_) {}
+    // Recuperamos la UI ANTES de reenviar: si los campos quedaron inválidos
+    // mientras corría la IA, el submit no navega y la hoja sigue usable.
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar gasto' }
+    setChubi('idle')
+    revisando = false
+    revisadoParaGuardar = true
+    if (form) { form.requestSubmit ? form.requestSubmit() : form.submit() }
+  }
+
   // Qué campos obligatorios faltan en la hoja (para warnings). Devuelve etiquetas.
   function camposFaltantes() {
     var f = []
@@ -245,6 +313,7 @@
   // Abrir en modo "nuevo"
   function openNew() {
     if (!sheet) return
+    revisadoParaGuardar = false
     resetForm()
     if (form) form.action = '/nuevo'
     if (sheetTitle) sheetTitle.textContent = 'Nuevo gasto'
@@ -313,8 +382,19 @@
         e.preventDefault()
         toast('warning', 'Te falta: ' + faltan.join(', '))
         focoEn(faltan[0])
+        return
       }
+      // Solo gastos NUEVOS cargados a mano, con IA activa y aún no revisados: la IA
+      // corrige la descripción y la categoría antes de guardar. (Los de voz ya vienen
+      // categorizados y marcan revisadoParaGuardar; las ediciones postean a /editar.)
+      var iaOn = form.getAttribute('data-ia') === 'true'
+      if (revisadoParaGuardar || !iaOn || form.action.indexOf('/nuevo') === -1) return
+      e.preventDefault()
+      revisarAntesDeGuardar()
     })
+
+    // Pulido local instantáneo al salir del campo descripción (sin red).
+    if (desc) desc.addEventListener('blur', function () { desc.value = polishLocal(desc.value) })
 
     // Cerrar (scrim, botón cancelar)
     var closers = document.querySelectorAll('[data-close-sheet]')
@@ -334,6 +414,9 @@
   // ============ Micrófono (voz) ============
   var recognition = null
   var listening = false
+  // Mientras guardamos un gasto de la IA (ventana de festejo + submit) bloqueamos
+  // el micrófono: si no, un segundo toque arranca una escucha que la recarga corta.
+  var guardando = false
   var finalText = ''
 
   function getRecognition() {
@@ -375,6 +458,7 @@
   }
 
   function startListening() {
+    if (guardando) return
     var r = getRecognition()
     if (!r) {
       // El navegador no soporta voz -> cargar a mano
@@ -404,22 +488,44 @@
       if (!res.ok) throw new Error('status ' + res.status)
       var data = await res.json()
       if (micLabel) micLabel.textContent = MIC_IDLE
-      // Abrimos "nuevo gasto" con lo que Gemini pudo parsear (fecha=hoy y
-      // moneda=ARS ya vienen por defecto; persona cae en la del usuario).
-      openNew()
+      // Cargamos el form (oculto) con lo que entendió la IA para ver si quedó
+      // completo. resetForm pone los defaults: fecha=hoy, moneda=ARS, persona=la
+      // del usuario logueado.
+      resetForm()
       fillForm(data.gasto)
-      if (heard) heard.textContent = '«' + texto + '»'
       var faltan = camposFaltantes()
       if (faltan.length) {
-        // Mapeo incompleto: warning y a completar a mano lo que falta.
+        // Mapeo incompleto: abrimos la hoja pre-cargada para completar a mano.
+        openNew()
+        fillForm(data.gasto)
+        if (heard) heard.textContent = '«' + texto + '»'
         setChubi('idle')
         if (sheetTitle) sheetTitle.textContent = 'Revisá el gasto'
         toast('warning', 'Me faltó: ' + faltan.join(', ') + '. Completalo 👇')
         focoEn(faltan[0])
       } else {
+        // Completo: lo guardamos directo, SIN abrir la hoja. El toast de éxito
+        // (con «Editar») en /inicio?ok= deja revisar y corregir lo que hizo la IA.
+        if (form) form.action = '/nuevo'
+        guardando = true
+        revisadoParaGuardar = true // la voz ya categorizó: no re-revisar al enviar
         setChubi('happy')
-        setTimeout(function () { setChubi('idle') }, 1600)
-        if (sheetTitle) sheetTitle.textContent = '¿Lo anoté bien?'
+        setBubble('¡Anotado! 📝', false)
+        // Dejamos lo escuchado (para el globo de Chubi) y si la IA NO detectó a la
+        // persona (cayó en la del usuario por defecto) para avisarlo en el toast.
+        // Con timestamp: solo lo mostramos si es reciente, así nunca aparece pegado
+        // a un guardado posterior si este submit no llegara a /inicio?ok=.
+        try {
+          sessionStorage.setItem('ia-save', JSON.stringify({
+            t: Date.now(),
+            heard: texto,
+            personaIncierta: !(data.gasto && data.gasto.persona),
+          }))
+        } catch (_) {}
+        // Pequeño respiro para que se vea el festejo y recién ahí guardamos.
+        setTimeout(function () {
+          if (form) { form.requestSubmit ? form.requestSubmit() : form.submit() }
+        }, 650)
       }
     } catch (err) {
       // Error real (request falló / IA caída): toast de error y a cargar a mano.
@@ -435,6 +541,7 @@
 
   if (micBtn) {
     micBtn.addEventListener('click', function () {
+      if (guardando) return
       if (listening && recognition) { try { recognition.stop() } catch (_) {} return }
       startListening()
     })
@@ -446,13 +553,55 @@
     var fid = flash.getAttribute('data-id')
     var fnombre = flash.getAttribute('data-nombre') || ''
     var fmonto = flash.getAttribute('data-monto') || ''
-    toast('success', 'Cargado a nombre de ' + fnombre + ' · ' + fmonto, {
+    var fdesc = flash.getAttribute('data-desc') || ''
+    var femoji = flash.getAttribute('data-emoji') || ''
+    var ffecha = flash.getAttribute('data-fecha-label') || '' // vacío si es hoy
+
+    // Contexto de la voz (si el gasto vino del micrófono): qué escuchó y si tuvo
+    // que adivinar a la persona. Solo lo usamos si es reciente (este mismo guardado).
+    var save = null
+    try {
+      var raw = sessionStorage.getItem('ia-save')
+      sessionStorage.removeItem('ia-save')
+      if (raw) {
+        var parsed = JSON.parse(raw)
+        if (parsed && (Date.now() - parsed.t) < 15000) save = parsed
+      }
+    } catch (_) {}
+
+    // Mensaje rico: deja VERIFICAR de un vistazo lo que entendió la IA
+    // (qué · cuánto · a nombre de quién [· fecha si no es hoy]), sin abrir el gasto.
+    var msg = (femoji ? femoji + ' ' : '') + (fdesc ? fdesc + ' · ' : '') + fmonto + ' · ' + fnombre
+    if (ffecha) msg += ' · ' + ffecha
+    // Si la IA NO entendió a nombre de quién, lo cargó a nombre del usuario por
+    // defecto: lo marcamos como aviso (no éxito liso) para que se revise.
+    var tipo = 'success'
+    if (save && save.personaIncierta) {
+      tipo = 'warning'
+      msg += ' — ¿a nombre tuyo está bien?'
+    }
+    toast(tipo, msg, {
       label: 'Editar',
       onClick: function () {
         // La edición vive en Resumen ahora.
         window.location.href = '/resumen?edit=' + encodeURIComponent(fid)
       },
     })
+    // Mostramos lo que escuchó en el globo de Chubi: junto al toast del resultado,
+    // da el contexto completo para controlar a la IA.
+    if (save && save.heard) setBubble('Escuché: «' + save.heard + '»', false)
+    // Carga manual revisada por IA: mostramos qué corrigió en la descripción (la
+    // categoría ya se ve por el emoji del toast). Solo si es reciente y cambió.
+    try {
+      var rawRev = sessionStorage.getItem('ia-revision')
+      sessionStorage.removeItem('ia-revision')
+      if (rawRev) {
+        var rev = JSON.parse(rawRev)
+        if (rev && (Date.now() - rev.t) < 15000 && rev.antes && rev.antes !== fdesc) {
+          setBubble('Corregí: «' + rev.antes + '» → «' + fdesc + '»', false)
+        }
+      }
+    } catch (_) {}
     // Limpiamos ?ok= de la URL para que un refresh no repita el toast.
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', '/inicio')

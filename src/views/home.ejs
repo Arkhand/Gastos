@@ -17,7 +17,7 @@
   </header>
 
   <section class="hero">
-    <div class="bubble bubble-hint" id="bubble">«Gasté 4500 en el súper»</div>
+    <div class="bubble bubble-hint" id="bubble" aria-live="polite">«Gasté 4500 en el súper»</div>
     <div class="mascot-wrap">
       <div class="mascot-shadow"></div>
       <%- include('partials/chubi', { estado: 'idle' }) %>
@@ -58,7 +58,7 @@
 
   <button class="fab" id="fab" type="button" aria-label="Cargar gasto"><span>＋</span></button>
 
-  <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault }) %>
+  <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault, sugerencias: sugerencias, iaEnabled: iaEnabled }) %>
   <%- include('partials/tabbar', { tab: 'home' }) %>
 
   <% if (creado) { %>
@@ -67,6 +67,9 @@
          data-id="<%= creado.id %>"
          data-nombre="<%= creado.aNombreDe %>"
          data-monto="<%= creado.montoStr %>"
+         data-desc="<%= creado.descripcion %>"
+         data-emoji="<%= creado.catEmoji %>"
+         data-fecha-label="<%= creado.fechaLabel %>"
          hidden></div>
   <% } %>
 </div>

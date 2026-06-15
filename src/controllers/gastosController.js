@@ -71,6 +71,21 @@ function leerGastoDelBody(body) {
   }
 }
 
+// Descripciones más usadas, para el autocompletado (datalist) de la hoja. Dedupe
+// por texto no vacío, ordenadas por frecuencia, top N.
+function sugerenciasDescripcion(gastos, limite = 20) {
+  const cuenta = new Map()
+  for (const g of gastos) {
+    const d = (g.descripcion || '').trim()
+    if (!d) continue
+    cuenta.set(d, (cuenta.get(d) ?? 0) + 1)
+  }
+  return [...cuenta.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limite)
+    .map(([d]) => d)
+}
+
 // --- Inicio: mascota + micrófono + últimos gastos (SOLO LECTURA, no se edita acá) ---
 export const home = async (req, res, next) => {
   try {
@@ -82,12 +97,25 @@ export const home = async (req, res, next) => {
     let creado = null
     if (req.query.ok) {
       const g = gastos.find((x) => String(x.id) === String(req.query.ok))
-      if (g) creado = { id: g.id, aNombreDe: personaLabel(g.a_nombre_de), montoStr: fmtMonto(g.moneda, g.monto) }
+      if (g) {
+        const fechaG = g.fecha || hoy
+        creado = {
+          id: g.id,
+          aNombreDe: personaLabel(g.a_nombre_de),
+          montoStr: fmtMonto(g.moneda, g.monto),
+          descripcion: g.descripcion,
+          catEmoji: catById(g.categoria).emoji,
+          // Solo informamos la fecha cuando NO es hoy (una fecha rara es un error
+          // silencioso fácil de no notar en un gasto cargado por voz).
+          fechaLabel: fechaG === hoy ? '' : fechaG === ayerAR() ? 'ayer' : fechaG,
+        }
+      }
     }
     res.render('home', {
       user: req.user,
       dbEnabled,
       iaEnabled,
+      sugerencias: sugerenciasDescripcion(gastos),
       categorias: CATEGORIAS,
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),
@@ -225,6 +253,8 @@ export const resumen = async (req, res, next) => {
     res.render('resumen', {
       user: req.user,
       dbEnabled,
+      iaEnabled,
+      sugerencias: sugerenciasDescripcion(gastos),
       filas,
       totalMes: fmtMonto('ARS', totalMesNum),
       pieGradient,

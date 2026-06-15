@@ -9,10 +9,15 @@
     <div class="sheet-heard" id="sheet-heard"></div>
   </div>
 
-  <form class="sheet-form" id="sheet-form" method="post" action="/nuevo">
+  <form class="sheet-form" id="sheet-form" method="post" action="/nuevo" data-ia="<%= typeof iaEnabled !== 'undefined' && iaEnabled %>">
     <div class="field">
       <label for="f-descripcion">¿Qué fue?</label>
-      <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" autocomplete="off" />
+      <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" list="desc-sugerencias" autocomplete="off" />
+      <datalist id="desc-sugerencias">
+        <% (typeof sugerencias !== 'undefined' ? sugerencias : []).forEach(function (s) { %>
+          <option value="<%= s %>"></option>
+        <% }) %>
+      </datalist>
     </div>
 
     <div class="field">

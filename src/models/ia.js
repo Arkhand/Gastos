@@ -3,7 +3,7 @@
 // IMPORTANTE: las API keys viven SOLO en el servidor (config.groq / config.gemini).
 // El navegador manda el texto a /api/interpretar; nunca ve las claves.
 import { config } from '../config/env.js'
-import { CATEGORIA_IDS } from '../config/categorias.js'
+import { CATEGORIA_IDS, normalizarCategoria } from '../config/categorias.js'
 import { PERSONA_ENUM, normalizarPersona } from '../config/personas.js'
 import { hoyAR } from '../utils/fecha.js'
 
@@ -30,6 +30,28 @@ const responseSchema = {
   required: ['descripcion', 'monto', 'moneda', 'categoria', 'persona', 'fecha'],
 }
 
+// Schema chico para la revisión de la carga manual (solo descripción + categoría).
+const responseSchemaRevision = {
+  type: 'OBJECT',
+  properties: {
+    descripcion: { type: 'STRING' },
+    categoria: { type: 'STRING', enum: CATEGORIA_IDS },
+  },
+  required: ['descripcion', 'categoria'],
+}
+
+// Guía de categorías compartida por los prompts de IA (interpretar y revisar).
+const GUIA_CATEGORIAS = [
+  '    · comida — comer afuera, delivery, restaurante, café, panadería.',
+  '    · super — supermercado, almacén, verdulería, carnicería, kiosco (mercadería).',
+  '    · transporte — nafta, SUBE, colectivo, taxi, Uber, peaje, estacionamiento.',
+  '    · salidas — bar, boliche, cine, tragos, ocio.',
+  '    · salud — farmacia, remedios, médico, obra social.',
+  '    · hogar — muebles, ferretería, limpieza, cosas para la casa.',
+  '    · servicios — luz, gas, agua, internet, teléfono, cable, expensas y suscripciones (Netflix, Spotify, etc.).',
+  '    · otros — si no encaja claramente en ninguna.',
+]
+
 function construirPrompt(texto) {
   const hoy = hoyAR()
   return [
@@ -47,14 +69,7 @@ function construirPrompt(texto) {
     '    · Si no se menciona ningún monto, devolvé 0.',
     '- moneda (string): "USD" SOLO si menciona dólares, "usd", "verdes" o "dólar"; en cualquier otro caso "ARS".',
     `- categoria (string): EXACTAMENTE uno de estos ids: ${CATEGORIA_IDS.join(', ')}. Guía:`,
-    '    · comida — comer afuera, delivery, restaurante, café, panadería.',
-    '    · super — supermercado, almacén, verdulería, carnicería, kiosco (mercadería).',
-    '    · transporte — nafta, SUBE, colectivo, taxi, Uber, peaje, estacionamiento.',
-    '    · salidas — bar, boliche, cine, tragos, ocio.',
-    '    · salud — farmacia, remedios, médico, obra social.',
-    '    · hogar — muebles, ferretería, limpieza, cosas para la casa.',
-    '    · servicios — luz, gas, agua, internet, teléfono, cable, expensas y suscripciones (Netflix, Spotify, etc.).',
-    '    · otros — si no encaja claramente en ninguna.',
+    ...GUIA_CATEGORIAS,
     '- persona (string): a nombre de quién fue el gasto, como EMAIL:',
     '    · "musiald@gmail.com" si dice Daniel, "él", "el varón", "el hombre" o un nombre de varón.',
     '    · "danielapaulacastelli@gmail.com" si dice Daniela, "ella", "la mujer" o un nombre de mujer.',
@@ -80,8 +95,48 @@ function construirPrompt(texto) {
   ].join('\n')
 }
 
+// Prompt enfocado para la carga MANUAL: corrige typos/formatea la descripción y
+// verifica la categoría (la cambia solo si claramente no corresponde). Estructura
+// Rol/Tarea/Reglas/Formato/Ejemplos (metodología prompt-engineer).
+function construirPromptRevision(descripcion, categoria) {
+  return [
+    '# Rol',
+    'Sos un asistente que corrige y formatea la descripción de UN gasto cargado a mano, y verifica su categoría. Español rioplatense (Argentina). Devolvés SOLO un objeto JSON válido, sin texto extra ni explicaciones.',
+    '',
+    '# Tarea',
+    '1. descripcion: corregí errores de tipeo y dejala prolija — capitalizada (primera letra mayúscula), concisa (pocas palabras), SIN el monto ni símbolos de moneda. Respetá las mayúsculas de marcas y siglas (YPF, SUBE, Netflix); no traduzcas ni cambies nombres de marcas/comercios. No agregues datos que el texto no diga.',
+    '2. categoria: MANTENÉ la categoría dada si encaja de forma razonable (la eligió la persona a propósito). Cambiala SOLO si claramente no corresponde a la descripción; ante cualquier duda, conservala.',
+    '',
+    `# Categorías válidas (ids): ${CATEGORIA_IDS.join(', ')}. Guía:`,
+    ...GUIA_CATEGORIAS,
+    '',
+    '# Reglas',
+    '- No inventes ni expandas la descripción más allá de corregir/formatear.',
+    '- Ante la duda con la categoría, conservá la dada.',
+    '- descripcion vacía o sin sentido → "descripcion":"" y conservá la categoría dada.',
+    '',
+    '# Formato',
+    'Devolvé exactamente: {"descripcion": <string>, "categoria": <uno de los ids válidos>}',
+    '',
+    '# Ejemplos',
+    'Entrada: descripcion="netflxi", categoria="otros"',
+    '{"descripcion":"Netflix","categoria":"servicios"}',
+    'Entrada: descripcion="nafta axion", categoria="comida"',
+    '{"descripcion":"Nafta Axion","categoria":"transporte"}',
+    'Entrada: descripcion="cafe con un amigo", categoria="salidas"',
+    '{"descripcion":"Café con un amigo","categoria":"salidas"}',
+    'Entrada: descripcion="super 5000", categoria="super"',
+    '{"descripcion":"Súper","categoria":"super"}',
+    'Entrada: descripcion="asdfgh", categoria="otros"',
+    '{"descripcion":"","categoria":"otros"}',
+    '',
+    '# Gasto a revisar',
+    `descripcion="${descripcion}", categoria="${categoria}"`,
+  ].join('\n')
+}
+
 // --- Gemini (Google Generative Language API) ---
-async function llamarGemini(model, prompt) {
+async function llamarGemini(model, prompt, schema = responseSchema) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.gemini.apiKey}`
   const res = await fetch(url, {
     method: 'POST',
@@ -91,7 +146,7 @@ async function llamarGemini(model, prompt) {
       generationConfig: {
         temperature: 0.2,
         responseMimeType: 'application/json',
-        responseSchema,
+        responseSchema: schema,
       },
     }),
   })
@@ -145,26 +200,53 @@ function normalizar(parsed) {
   }
 }
 
-// Interpreta el gasto probando cada modelo en orden hasta que uno funcione.
-export async function interpretarGasto(texto) {
-  if (!iaEnabled) {
-    throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
+// Revisión de la carga manual: solo descripción (prolija) + categoría válida.
+// Si el modelo devuelve una categoría inválida/vacía (p. ej. Groq sin enum),
+// CONSERVAMOS la que eligió la persona en vez de degradarla a 'otros'.
+function normalizarRevision(parsed, categoriaOriginal) {
+  return {
+    descripcion: String(parsed.descripcion ?? '').trim(),
+    categoria: CATEGORIA_IDS.includes(parsed.categoria) ? parsed.categoria : categoriaOriginal,
   }
+}
 
-  const prompt = construirPrompt(texto)
+// Prueba cada modelo en orden (Groq primero, Gemini de respaldo) hasta que uno
+// responda bien. Compartido por interpretarGasto (voz) y revisarGasto (manual).
+async function ejecutarModelos(prompt, schema, normalizeFn) {
   let ultimoError
-
   for (const { provider, model } of MODELOS_ACTIVOS) {
     try {
       const parsed = provider === 'groq'
         ? await llamarGroq(model, prompt)
-        : await llamarGemini(model, prompt)
-      return normalizar(parsed)
+        : await llamarGemini(model, prompt, schema)
+      return normalizeFn(parsed)
     } catch (err) {
       ultimoError = err
       console.warn(`[ia] ${provider}/${model} falló, pruebo el siguiente:`, err.message)
     }
   }
-
   throw new Error(`Todos los modelos fallaron. Último error: ${ultimoError?.message}`)
+}
+
+// Interpreta un gasto a partir de texto libre dictado por voz.
+export async function interpretarGasto(texto) {
+  if (!iaEnabled) {
+    throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
+  }
+  return ejecutarModelos(construirPrompt(texto), responseSchema, normalizar)
+}
+
+// Corrige typos/formatea la descripción y verifica la categoría (carga manual).
+export async function revisarGasto(descripcion, categoria) {
+  if (!iaEnabled) {
+    throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
+  }
+  // La categoría que mandó el front ya es un id válido; es el fallback si el
+  // modelo devuelve algo fuera de la lista.
+  const original = normalizarCategoria(categoria)
+  return ejecutarModelos(
+    construirPromptRevision(descripcion, categoria),
+    responseSchemaRevision,
+    (parsed) => normalizarRevision(parsed, original),
+  )
 }

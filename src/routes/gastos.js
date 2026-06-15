@@ -9,7 +9,7 @@ import {
   resumen,
   nosotros,
 } from '../controllers/gastosController.js'
-import { interpretar } from '../controllers/iaController.js'
+import { interpretar, revisar } from '../controllers/iaController.js'
 
 export const gastosRouter = Router()
 
@@ -25,6 +25,9 @@ gastosRouter.post('/gastos/:id/eliminar', requireAuth, eliminar)
 
 // IA: el navegador manda el texto transcripto y recibe el gasto en JSON
 gastosRouter.post('/api/interpretar', requireAuth, interpretar)
+
+// IA: revisa la descripción (typos/formato) y la categoría de una carga manual
+gastosRouter.post('/api/revisar', requireAuth, revisar)
 
 // Compatibilidad con atajos/bookmarks viejos -> al inicio
 gastosRouter.get(['/nuevo', '/gastos', '/gastos/:id/editar'], requireAuth, (_req, res) =>
