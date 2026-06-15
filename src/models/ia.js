@@ -230,12 +230,26 @@ async function ejecutarModelos(prompt, schema, normalizeFn) {
   throw new Error(`Todos los modelos fallaron. Último error: ${ultimoError?.message}`)
 }
 
+// La MONEDA la decide el TEXTO, nunca el modelo (que a veces marca USD aunque se
+// dijo "pesos"). Regla dura, pedida por el usuario: USD SOLO si se mencionan
+// dólares explícitamente y NO se mencionan pesos. En cualquier otro caso, ARS.
+export function monedaDesdeTexto(texto) {
+  const t = (texto || '').toLowerCase()
+  const pesos = /\bpesos?\b|\bars\b|\bmangos?\b|\blucas?\b|\bpalos?\b/.test(t)
+  const usd = /d[oó]lar(es)?\b|\busd\b|u\$s|us\$|\bverdes?\b/.test(t)
+  if (usd && !pesos) return 'USD'
+  return 'ARS'
+}
+
 // Interpreta un gasto a partir de texto libre dictado por voz.
 export async function interpretarGasto(texto) {
   if (!iaEnabled) {
     throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
   }
-  return ejecutarModelos(construirPrompt(texto), responseSchema, normalizar)
+  const gasto = await ejecutarModelos(construirPrompt(texto), responseSchema, normalizar)
+  // No confiamos la moneda al modelo: la fijamos por las palabras del usuario.
+  gasto.moneda = monedaDesdeTexto(texto)
+  return gasto
 }
 
 // Corrige typos/formatea la descripción y verifica la categoría (carga manual).
