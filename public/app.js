@@ -482,6 +482,16 @@
       var vgr = document.getElementById('vista-graficos')
       if (vg) vg.classList.toggle('is-on', v === 'gastos')
       if (vgr) vgr.classList.toggle('is-on', v === 'graficos')
+      // Mantener la vista en la URL y en las flechas de mes (para no perderla al cambiar de mes).
+      try {
+        var url = new URL(window.location.href)
+        url.searchParams.set('vista', v)
+        window.history.replaceState({}, '', url)
+      } catch (_) {}
+      var arrows = document.querySelectorAll('.mes-arrow[data-mes]')
+      for (var k = 0; k < arrows.length; k++) {
+        arrows[k].href = '/resumen?mes=' + arrows[k].getAttribute('data-mes') + '&vista=' + v
+      }
     })
   }
 })()

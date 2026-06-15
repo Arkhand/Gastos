@@ -16,6 +16,7 @@
   --c-salidas:#e6d6f7; --c-salidas-ink:#6a3fa0;
   --c-salud:#ffd6e2; --c-salud-ink:#b23a63;
   --c-hogar:#cfe6f7; --c-hogar-ink:#2f6a9a;
+  --c-servicios:#cdeef0; --c-servicios-ink:#1f7d86;
   --c-otros:#e3e0ea; --c-otros-ink:#5a5570;
   --font-d:'Fredoka', system-ui, sans-serif;
   --font-b:'Nunito', system-ui, sans-serif;
@@ -40,6 +41,7 @@ a { color:inherit; }
 .cat-salidas    { --bg:var(--c-salidas);    --ink:var(--c-salidas-ink); }
 .cat-salud      { --bg:var(--c-salud);      --ink:var(--c-salud-ink); }
 .cat-hogar      { --bg:var(--c-hogar);      --ink:var(--c-hogar-ink); }
+.cat-servicios  { --bg:var(--c-servicios);  --ink:var(--c-servicios-ink); }
 .cat-otros      { --bg:var(--c-otros);      --ink:var(--c-otros-ink); }
 
 /* ---------- App screen base ---------- */
@@ -375,6 +377,12 @@ body.sheet-open .sheet { transform:translateX(-50%) translateY(0); }
 .persona-tot { text-align:right; display:flex; flex-direction:column; }
 .persona-ars { font-family:var(--font-d); font-weight:600; color:var(--ink); font-size:15px; }
 .persona-usd { font-size:12px; color:var(--ink-soft); }
+
+/* ---------- Navegador de mes (Resumen) ---------- */
+.mes-nav { display:flex; align-items:center; justify-content:center; gap:14px; margin:2px 0 14px; }
+.mes-arrow { width:34px; height:34px; border-radius:50%; background:#fff; box-shadow:0 3px 10px rgba(120,90,60,.12); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--coral-deep); text-decoration:none; font-family:var(--font-d); }
+.mes-arrow-off { opacity:.3; box-shadow:none; }
+.mes-label { font-family:var(--font-d); font-weight:600; font-size:17px; min-width:150px; text-align:center; }
 
 /* ---------- Segmented (a nombre de quién) ---------- */
 .segmented { display:flex; gap:8px; }

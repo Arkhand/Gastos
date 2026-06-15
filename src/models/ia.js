@@ -34,7 +34,7 @@ function construirPrompt(texto) {
     '- descripcion: texto corto de qué se gastó (sin el monto), capitalizado. Si no se entiende qué se gastó, dejala vacía "".',
     '- monto: número en la moneda detectada. Entendé "mil", "lucas", "palos", "k" y el formato es-AR (el punto separa miles: "2.500" = 2500). Si no se dice un monto, devolvé 0.',
     '- moneda: "USD" solo si menciona dólares o usd; si no, "ARS".',
-    `- categoria: una de estas exactamente: ${CATEGORIA_IDS.join(', ')}. Si no encaja, "otros".`,
+    `- categoria: una de estas exactamente: ${CATEGORIA_IDS.join(', ')}. "servicios" es para luz, gas, agua, internet, teléfono, cable, expensas y suscripciones (Netflix, Spotify, etc.). Si no encaja en ninguna, "otros".`,
     '- persona: a nombre de quién fue el gasto, devuelto como EMAIL. Usá "musiald@gmail.com" si dice Daniel, "él", "el varón" o un nombre de varón; "danielapaulacastelli@gmail.com" si dice Daniela, "ella", "la mujer" o un nombre de mujer. Si solo dice "Dani" (ambiguo) o no menciona a nadie, devolvé "Desconocido".',
     '- fecha: en formato YYYY-MM-DD.',
     '',

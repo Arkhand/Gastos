@@ -11,7 +11,7 @@ import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.j
 import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { obtenerCotizacion, convertirMontos } from '../models/cotizacion.js'
-import { hoyAR, ayerAR } from '../utils/fecha.js'
+import { hoyAR, ayerAR, mesLabel, mesAnterior, mesSiguiente } from '../utils/fecha.js'
 
 // Formatea un monto con su signo de moneda (es-AR: el punto separa miles).
 function fmtMonto(moneda, valor) {
@@ -170,10 +170,17 @@ export const resumen = async (req, res, next) => {
   try {
     let gastos = []
     if (dbEnabled) gastos = await listarGastos(req.user.id)
-    const mes = hoyAR().slice(0, 7) // YYYY-MM
-    const delMes = gastos.filter((g) => (g.fecha || '').slice(0, 7) === mes && g.moneda === 'ARS')
+    const hoy = hoyAR()
+    const mesActual = hoy.slice(0, 7)
+    // Mes elegido (?mes=YYYY-MM); por defecto el actual y nunca futuro.
+    const mesReq = String(req.query.mes || '')
+    const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
+    const vista = req.query.vista === 'graficos' ? 'graficos' : 'gastos'
+    // Gastos del mes elegido (sin fecha = cuenta como hoy).
+    const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
     const porCat = {}
-    for (const g of delMes) {
+    for (const g of gastosMes) {
+      if (g.moneda !== 'ARS') continue
       const id = g.categoria || 'otros'
       porCat[id] = (porCat[id] ?? 0) + Number(g.monto)
     }
@@ -194,9 +201,8 @@ export const resumen = async (req, res, next) => {
     })
     const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--c-otros)'
     // Total por persona (ARS y USD), sumando los montos convertidos del mes.
-    const mesGastos = gastos.filter((g) => (g.fecha || '').slice(0, 7) === mes)
     const porPersona = {}
-    for (const g of mesGastos) {
+    for (const g of gastosMes) {
       const id = normalizarPersona(g.a_nombre_de)
       if (!id) continue
       if (!porPersona[id]) porPersona[id] = { ars: 0, usd: 0 }
@@ -222,7 +228,13 @@ export const resumen = async (req, res, next) => {
       catById,
       personaLabel,
       fmt: fmtMonto,
-      grupos: agruparPorDia(gastos),
+      grupos: agruparPorDia(gastosMes),
+      mes,
+      mesNombre: mesLabel(mes),
+      prevMes: mesAnterior(mes),
+      nextMes: mesSiguiente(mes),
+      showNext: mes < mesActual,
+      vista,
       tab: 'stats',
     })
   } catch (err) {

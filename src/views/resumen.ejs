@@ -3,18 +3,29 @@
   <div class="resumen">
     <h1>Resumen</h1>
 
+    <!-- Navegador de mes -->
+    <div class="mes-nav">
+      <a class="mes-arrow" data-mes="<%= prevMes %>" href="/resumen?mes=<%= prevMes %>&vista=<%= vista %>" aria-label="Mes anterior">‹</a>
+      <span class="mes-label"><%= mesNombre %></span>
+      <% if (showNext) { %>
+        <a class="mes-arrow" data-mes="<%= nextMes %>" href="/resumen?mes=<%= nextMes %>&vista=<%= vista %>" aria-label="Mes siguiente">›</a>
+      <% } else { %>
+        <span class="mes-arrow mes-arrow-off">›</span>
+      <% } %>
+    </div>
+
     <!-- Cambia entre la lista de gastos y los gráficos -->
     <div class="segmented vista-seg" id="vista-seg">
-      <button type="button" class="seg-opt is-on" data-vista="gastos">Gastos</button>
-      <button type="button" class="seg-opt" data-vista="graficos">Gráficos</button>
+      <button type="button" class="seg-opt <%= vista === 'gastos' ? 'is-on' : '' %>" data-vista="gastos">Gastos</button>
+      <button type="button" class="seg-opt <%= vista === 'graficos' ? 'is-on' : '' %>" data-vista="graficos">Gráficos</button>
     </div>
 
     <!-- ===== Vista: Gastos (lista editable con lápiz) ===== -->
-    <div class="vista is-on" id="vista-gastos">
+    <div class="vista <%= vista === 'gastos' ? 'is-on' : '' %>" id="vista-gastos">
       <% if (!dbEnabled) { %>
         <div class="recent-empty">Base de datos no configurada todavía.</div>
       <% } else if (grupos.length === 0) { %>
-        <div class="recent-empty">Sin gastos todavía.</div>
+        <div class="recent-empty">Sin gastos en este mes.</div>
       <% } else { %>
         <% grupos.forEach(function (grupo) { %>
           <div class="day-group">
@@ -33,9 +44,9 @@
     </div>
 
     <!-- ===== Vista: Gráficos (torta + barras por categoría) ===== -->
-    <div class="vista" id="vista-graficos">
+    <div class="vista <%= vista === 'graficos' ? 'is-on' : '' %>" id="vista-graficos">
       <div class="res-total">
-        <div class="res-total-label">Gastado este mes (ARS)</div>
+        <div class="res-total-label">Total del mes (ARS)</div>
         <div class="res-total-amount"><%= totalMes %></div>
       </div>
 
