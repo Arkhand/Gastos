@@ -8,7 +8,6 @@ import {
   corregir,
   eliminar,
   resumen,
-  movimientos,
   nosotros,
 } from '../controllers/gastosController.js'
 import { interpretar, revisar } from '../controllers/iaController.js'
@@ -18,7 +17,6 @@ export const gastosRouter = Router()
 // Pantallas (pestañas): inicio / resumen / nosotros
 gastosRouter.get('/inicio', requireAuth, home)
 gastosRouter.get('/resumen', requireAuth, resumen)
-gastosRouter.get('/movimientos', requireAuth, movimientos)
 gastosRouter.get('/nosotros', requireAuth, nosotros)
 
 // Acciones del gasto (la hoja inferior postea acá)

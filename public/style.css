@@ -542,11 +542,9 @@ body.sheet-open .sheet { transform:translateX(-50%) translateY(0); }
   .page-resumen .resumen { padding:0; }
   .page-resumen .resumen h1 { font-size:30px; }
   .page-resumen .mes-nav { justify-content:flex-start; }
-  /* lista de gastos en 2 columnas tipo masonry */
-  .page-resumen #vista-gastos { columns:2; column-gap:18px; }
-  .page-resumen #vista-gastos .day-group { break-inside:avoid; }
-  /* gráficos en grilla */
-  .page-resumen #vista-graficos { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+  /* gráficos en grilla (solo cuando la vista Gráficos está activa; si no, el ID
+     ganaba por especificidad y dejaba los gráficos siempre visibles) */
+  .page-resumen #vista-graficos.is-on { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
   .page-resumen #vista-graficos .res-total { grid-column:1 / -1; }
 
   /* ---------- Nosotros: hero centrado y tarjetas grandes ---------- */
@@ -658,3 +656,18 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
   .filt-right { margin-left:auto; }
   table.tbl { min-width:0; } /* en escritorio entra sin scroll horizontal */
 }
+
+/* =========================================================
+   RESUMEN — la vista "Gastos" muestra la lista (mobile) o la
+   tabla detallada (desktop). La lista queda en el DOM en desktop
+   (oculta) para reusar su lógica de edición.
+   ========================================================= */
+.gastos-desktop { display:none; }
+@media (min-width:900px) {
+  .gastos-mobile { display:none; }
+  .gastos-desktop { display:block; }
+}
+.mv-edit-cell { width:1%; white-space:nowrap; text-align:right; }
+.mv-edit { width:32px; height:32px; border:none; border-radius:10px; background:#f0e6d9; color:var(--coral-deep); font-size:14px; line-height:1; cursor:pointer; }
+.mv-edit:hover { background:#e9dcc9; }
+.mv-edit:active { transform:scale(.92); }
