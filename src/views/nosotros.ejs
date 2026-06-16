@@ -1,5 +1,7 @@
 <%- include('partials/header', { titulo: 'Nosotros', user: user }) %>
-<div class="app-root nosotros">
+<div class="app-shell">
+<%- include('partials/sidebar', { tab: 'us' }) %>
+<div class="app-root nosotros page-nosotros">
   <div class="nos-hero">
     <div class="nos-kicker">NOSOTROS</div>
     <div class="nos-title">Un equipo<br />familiar 💛</div>
@@ -26,5 +28,6 @@
 
   <div class="nos-quote">"Si lo decís en voz alta, ya está cargado."</div>
   <%- include('partials/tabbar', { tab: 'us' }) %>
+</div>
 </div>
 <%- include('partials/footer') %>

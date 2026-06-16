@@ -1,0 +1,80 @@
+<!-- @dsCard group="Componentes" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body{margin:0;padding:0;background:radial-gradient(circle at 20% 10%,#f5ede2,#e7ded2 70%)}
+  .sheet-host{max-width:460px;margin:0 auto;background:var(--cream);border-radius:30px;padding:18px 22px 26px;box-shadow:0 -12px 40px rgba(40,28,18,.18)}
+</style>
+</head>
+<body>
+  <div class="sheet-host">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">Nuevo gasto</div>
+      <div class="sheet-heard">Te escuché: «súper 4500»</div>
+    </div>
+
+    <div class="field">
+      <label>¿Qué fue?</label>
+      <input class="inp" value="Súper" />
+    </div>
+
+    <div class="field">
+      <label>¿Cuánto?</label>
+      <div class="money-row">
+        <div class="money-inp">
+          <span class="money-sign">$</span>
+          <input class="inp-money" type="text" value="4500" />
+        </div>
+        <div class="moneda-toggle">
+          <button type="button" class="moneda-opt is-on">ARS</button>
+          <button type="button" class="moneda-opt">USD</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>¿A nombre de quién?</label>
+      <div class="segmented">
+        <button type="button" class="seg-opt is-on"><span class="seg-emoji">👨</span>Dani Hombre</button>
+        <button type="button" class="seg-opt"><span class="seg-emoji">👩</span>Dani Mujer</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Categoría</label>
+      <div class="chips">
+        <button type="button" class="chip cat-comida is-on"><span class="chip-emoji">🍔</span>Comida</button>
+        <button type="button" class="chip cat-super"><span class="chip-emoji">🛒</span>Súper</button>
+        <button type="button" class="chip cat-transporte"><span class="chip-emoji">🚕</span>Transporte</button>
+        <button type="button" class="chip cat-salidas is-on"><span class="chip-emoji">🍻</span>Salidas</button>
+        <button type="button" class="chip cat-salud"><span class="chip-emoji">💊</span>Salud</button>
+        <button type="button" class="chip cat-hogar"><span class="chip-emoji">🏠</span>Hogar</button>
+        <button type="button" class="chip cat-servicios"><span class="chip-emoji">💡</span>Servicios</button>
+        <button type="button" class="chip cat-otros"><span class="chip-emoji">✨</span>Otros</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>¿Cuándo?</label>
+      <div class="date-row">
+        <button type="button" class="date-pill is-on">Hoy</button>
+        <button type="button" class="date-pill">Ayer</button>
+        <button type="button" class="date-pill">Otro día</button>
+      </div>
+    </div>
+
+    <div class="sheet-actions">
+      <button type="button" class="btn-ghost">Cancelar</button>
+      <button type="submit" class="btn-save">Guardar gasto</button>
+    </div>
+  </div>
+</body>
+</html>

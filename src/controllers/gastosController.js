@@ -12,7 +12,7 @@ import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.j
 import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { obtenerCotizacion, convertirMontos } from '../models/cotizacion.js'
-import { hoyAR, ayerAR, mesLabel } from '../utils/fecha.js'
+import { hoyAR, ayerAR, mesLabel, fechaCorta } from '../utils/fecha.js'
 
 // Formatea un monto con su signo de moneda (es-AR: el punto separa miles).
 function fmtMonto(moneda, valor) {
@@ -299,6 +299,64 @@ export const resumen = async (req, res, next) => {
       meses,
       vista,
       tab: 'stats',
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// --- Movimientos: tabla detallada de todos los gastos del mes (filtros/búsqueda
+// /agrupado/export son client-side). Los montos ARS/USD ya vienen convertidos en
+// la BD (monto_ars/monto_usd), así que acá solo los resolvemos para la tabla. ---
+export const movimientos = async (req, res, next) => {
+  try {
+    let gastos = []
+    if (dbEnabled) gastos = await listarGastos(req.user.id)
+    const hoy = hoyAR()
+    const mesActual = hoy.slice(0, 7)
+    const mesReq = String(req.query.mes || '')
+    const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
+    // Meses con datos (más el elegido), de mayor a menor.
+    const mesesSet = new Set(gastos.map((g) => (g.fecha || hoy).slice(0, 7)))
+    mesesSet.add(mes)
+    const meses = [...mesesSet].sort((a, b) => (a < b ? 1 : -1)).map((m) => ({ value: m, label: mesLabel(m) }))
+    const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
+    // Una fila por gasto con TODO el display resuelto (la vista solo formatea números).
+    const filas = gastosMes.map((g) => {
+      const fecha = g.fecha || hoy
+      const cat = catById(g.categoria)
+      const perId = normalizarPersona(g.a_nombre_de)
+      const per = PERSONAS.find((p) => p.id === perId)
+      const moneda = g.moneda === 'USD' ? 'USD' : 'ARS'
+      return {
+        fecha,
+        fechaLabel: fechaCorta(fecha),
+        per: perId || '',
+        perLabel: per ? per.label : g.a_nombre_de || '—',
+        perEmoji: per ? per.emoji : '👤',
+        desc: g.descripcion || '',
+        cat: cat.id,
+        catLabel: cat.label,
+        catEmoji: cat.emoji,
+        cur: moneda,
+        amt: Number(g.monto) || 0,
+        ars: g.monto_ars != null ? Number(g.monto_ars) : moneda === 'ARS' ? Number(g.monto) : null,
+        usd: g.monto_usd != null ? Number(g.monto_usd) : moneda === 'USD' ? Number(g.monto) : null,
+      }
+    })
+    // JSON seguro para embeber en <script> (escapamos < para que ninguna descripción
+    // pueda cerrar la etiqueta).
+    const filasJson = JSON.stringify(filas).replace(/</g, '\\u003c')
+    res.render('movimientos', {
+      user: req.user,
+      dbEnabled,
+      mes,
+      meses,
+      filas,
+      filasJson,
+      categorias: CATEGORIAS,
+      personas: PERSONAS,
+      tab: 'mov',
     })
   } catch (err) {
     next(err)

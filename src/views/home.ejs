@@ -1,5 +1,7 @@
 <%- include('partials/header', { titulo: 'Gastos danis', user: user }) %>
-<div class="app-root">
+<div class="app-shell">
+<%- include('partials/sidebar', { tab: 'home' }) %>
+<div class="app-root page-inicio">
   <header class="hdr">
     <div>
       <div class="hdr-title">Gastos danis</div>
@@ -16,49 +18,54 @@
     </div>
   </header>
 
-  <section class="hero">
-    <div class="bubble bubble-hint" id="bubble" aria-live="polite">«Gasté 4500 en el súper»</div>
-    <div class="mascot-wrap">
-      <div class="mascot-shadow"></div>
-      <%- include('partials/chubi', { estado: 'idle' }) %>
-    </div>
-    <button class="mic-btn" id="mic-btn" type="button" aria-label="Hablar un gasto">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-        <rect x="9" y="2.5" width="6" height="11.5" rx="3" fill="currentColor" />
-        <path d="M5.5 11a6.5 6.5 0 0 0 13 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
-        <path d="M12 17.5V21" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
-        <path d="M8.5 21h7" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
-      </svg>
-    </button>
-    <div class="mic-label" id="mic-label">Tocá y contame un gasto</div>
-  </section>
-
-  <section class="recent">
-    <div class="recent-head">Últimos gastos</div>
-    <% if (!dbEnabled) { %>
-      <div class="recent-empty">Base de datos no configurada todavía.</div>
-    <% } else if (grupos.length === 0) { %>
-      <div class="recent-empty">Sin gastos todavía. Tocá el micrófono o el ➕ para cargar el primero.</div>
-    <% } else { %>
-      <% grupos.forEach(function (grupo) { %>
-        <div class="day-group">
-          <div class="day-row">
-            <span class="day-label"><%= grupo.etiqueta %></span>
-            <span class="day-total"><%= grupo.totalStr %></span>
-          </div>
-          <div class="day-card">
-            <% grupo.items.forEach(function (g) { %>
-              <%- include('partials/gasto-row', { g: g, editable: false }) %>
-            <% }) %>
-          </div>
+  <div class="dk-cols">
+    <div class="dk-col-main">
+      <section class="hero">
+        <div class="bubble bubble-hint" id="bubble" aria-live="polite">«Gasté 4500 en el súper»</div>
+        <div class="mascot-wrap">
+          <div class="mascot-shadow"></div>
+          <%- include('partials/chubi', { estado: 'idle' }) %>
         </div>
-      <% }) %>
-    <% } %>
-  </section>
+        <button class="mic-btn" id="mic-btn" type="button" aria-label="Hablar un gasto">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="2.5" width="6" height="11.5" rx="3" fill="currentColor" />
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+            <path d="M12 17.5V21" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+            <path d="M8.5 21h7" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="mic-label" id="mic-label">Tocá y contame un gasto</div>
+      </section>
+
+      <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault, sugerencias: sugerencias, iaEnabled: iaEnabled }) %>
+    </div>
+
+    <section class="recent">
+      <div class="recent-head">Últimos gastos</div>
+      <% if (!dbEnabled) { %>
+        <div class="recent-empty">Base de datos no configurada todavía.</div>
+      <% } else if (grupos.length === 0) { %>
+        <div class="recent-empty">Sin gastos todavía. Tocá el micrófono o el ➕ para cargar el primero.</div>
+      <% } else { %>
+        <% grupos.forEach(function (grupo) { %>
+          <div class="day-group">
+            <div class="day-row">
+              <span class="day-label"><%= grupo.etiqueta %></span>
+              <span class="day-total"><%= grupo.totalStr %></span>
+            </div>
+            <div class="day-card">
+              <% grupo.items.forEach(function (g) { %>
+                <%- include('partials/gasto-row', { g: g, editable: false }) %>
+              <% }) %>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </section>
+  </div>
 
   <button class="fab" id="fab" type="button" aria-label="Cargar gasto"><span>＋</span></button>
 
-  <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault, sugerencias: sugerencias, iaEnabled: iaEnabled }) %>
   <%- include('partials/tabbar', { tab: 'home' }) %>
 
   <% if (creado) { %>
@@ -72,5 +79,6 @@
          data-fecha-label="<%= creado.fechaLabel %>"
          hidden></div>
   <% } %>
+</div>
 </div>
 <%- include('partials/footer') %>

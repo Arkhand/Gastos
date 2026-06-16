@@ -1,5 +1,7 @@
 <%- include('partials/header', { titulo: 'Resumen', user: user }) %>
-<div class="app-root">
+<div class="app-shell">
+<%- include('partials/sidebar', { tab: 'stats' }) %>
+<div class="app-root page-resumen">
   <div class="resumen">
     <h1>Resumen</h1>
 
@@ -98,5 +100,6 @@
 
   <%- include('partials/sheet', { categorias: categorias, personas: personas, personaDefault: personaDefault, sugerencias: sugerencias, iaEnabled: iaEnabled }) %>
   <%- include('partials/tabbar', { tab: 'stats' }) %>
+</div>
 </div>
 <%- include('partials/footer') %>

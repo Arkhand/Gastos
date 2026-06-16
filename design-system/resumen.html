@@ -1,0 +1,60 @@
+<!-- @dsCard group="Datos y gráficos" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body{margin:0;padding:0;background:radial-gradient(circle at 20% 10%,#f5ede2,#e7ded2 70%)}
+  .frame{max-width:460px;margin:0 auto;background:var(--cream);min-height:100%}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="resumen">
+      <div class="res-total">
+        <div class="res-total-label">Total del mes</div>
+        <div class="res-total-amount">$128.400</div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Por categoría</div>
+        <div class="pie-wrap">
+          <div class="pie" style="background:conic-gradient(#ffd9cf 0 35%,#cdeccf 35% 58%,#ffe6b3 58% 75%,#e6d6f7 75% 90%,#e3e0ea 90% 100%)"></div>
+          <div class="pie-legend">
+            <div class="leg-item"><span class="leg-dot cat-comida"></span><span class="leg-name">Comida</span><span class="leg-pct">35%</span></div>
+            <div class="leg-item"><span class="leg-dot cat-super"></span><span class="leg-name">Súper</span><span class="leg-pct">23%</span></div>
+            <div class="leg-item"><span class="leg-dot cat-transporte"></span><span class="leg-name">Transporte</span><span class="leg-pct">17%</span></div>
+            <div class="leg-item"><span class="leg-dot cat-salidas"></span><span class="leg-name">Salidas</span><span class="leg-pct">15%</span></div>
+            <div class="leg-item"><span class="leg-dot cat-otros"></span><span class="leg-name">Otros</span><span class="leg-pct">10%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Ranking</div>
+        <div class="bar-row"><span class="bar-name">Comida</span><span class="bar-track"><span class="bar-fill cat-comida" style="width:100%"></span></span><span class="bar-val">$45.200</span></div>
+        <div class="bar-row"><span class="bar-name">Súper</span><span class="bar-track"><span class="bar-fill cat-super" style="width:66%"></span></span><span class="bar-val">$29.500</span></div>
+        <div class="bar-row"><span class="bar-name">Transporte</span><span class="bar-track"><span class="bar-fill cat-transporte" style="width:48%"></span></span><span class="bar-val">$21.800</span></div>
+        <div class="bar-row"><span class="bar-name">Salidas</span><span class="bar-track"><span class="bar-fill cat-salidas" style="width:42%"></span></span><span class="bar-val">$19.200</span></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Por persona</div>
+        <div class="persona-row">
+          <span class="persona-name">👨 Dani Hombre</span>
+          <span class="persona-tot"><span class="persona-ars">$71.300</span><span class="persona-usd">US$58</span></span>
+        </div>
+        <div class="persona-row">
+          <span class="persona-name">👩 Dani Mujer</span>
+          <span class="persona-tot"><span class="persona-ars">$57.100</span><span class="persona-usd">US$47</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

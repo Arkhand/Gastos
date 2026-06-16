@@ -1,0 +1,40 @@
+<%# Barra lateral de ESCRITORIO. En mobile está oculta (ahí manda el tabbar).
+     Pasale { tab } = 'home' | 'stats' | 'us' para marcar el item activo. %>
+<aside class="app-sidebar">
+  <div class="dk-brand">
+    <span class="dk-logo">G</span>
+    <span class="dk-brand-name">Gastos</span>
+  </div>
+
+  <nav class="dk-nav">
+    <a class="dk-nav-item <%= tab === 'home' ? 'is-on' : '' %>" href="/inicio">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+      Cargar
+    </a>
+    <a class="dk-nav-item <%= tab === 'stats' ? 'is-on' : '' %>" href="/resumen">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="12" width="4" height="7" rx="1.2" fill="currentColor" /><rect x="10" y="7" width="4" height="12" rx="1.2" fill="currentColor" /><rect x="16" y="9" width="4" height="10" rx="1.2" fill="currentColor" /></svg>
+      Resumen
+    </a>
+    <a class="dk-nav-item <%= tab === 'mov' ? 'is-on' : '' %>" href="/movimientos">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+      Movimientos
+    </a>
+    <a class="dk-nav-item <%= tab === 'us' ? 'is-on' : '' %>" href="/nosotros">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+      Nosotros
+    </a>
+  </nav>
+
+  <div class="dk-side-foot">
+    <div class="dk-family">
+      <span class="dk-fam-avatars">👨👩</span>
+      <span>
+        <span class="dk-fam-name">Familia Dani</span><br />
+        <span class="dk-fam-sub">2 personas</span>
+      </span>
+    </div>
+    <form method="post" action="/auth/logout">
+      <button class="dk-logout" type="submit">Cerrar sesión</button>
+    </form>
+  </div>
+</aside>

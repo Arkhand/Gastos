@@ -1,0 +1,35 @@
+<!-- @dsCard group="Feedback" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body{margin:0;padding:24px;background:radial-gradient(circle at 20% 10%,#f5ede2,#e7ded2 70%)}
+  .stack{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  /* anular la animación de entrada para mostrarlos estáticos en la tarjeta */
+  .toast{opacity:1;transform:none}
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div class="toast toast-success">
+      <div class="toast-ico">✓</div>
+      <div class="toast-msg">Gasto guardado · Súper $4.500</div>
+      <button class="toast-act">Deshacer</button>
+    </div>
+    <div class="toast toast-warning">
+      <div class="toast-ico">!</div>
+      <div class="toast-msg">No te entendí el monto, revisalo antes de guardar.</div>
+    </div>
+    <div class="toast toast-error">
+      <div class="toast-ico">✕</div>
+      <div class="toast-msg">No se pudo guardar. Probá de nuevo.</div>
+    </div>
+  </div>
+</body>
+</html>

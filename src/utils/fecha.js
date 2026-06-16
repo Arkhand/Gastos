@@ -27,6 +27,15 @@ export function mesLabel(mes) {
   return MESES_ES[m - 1].charAt(0).toUpperCase() + MESES_ES[m - 1].slice(1) + ' ' + y
 }
 
+const MESES_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+// "2026-06-16" -> "16 jun" (para la tabla de Movimientos)
+export function fechaCorta(fecha) {
+  const [y, m, d] = String(fecha).split('-').map(Number)
+  if (!y || !m || !d) return String(fecha)
+  return d + ' ' + (MESES_ABBR[m - 1] || '')
+}
+
 // "2026-06" -> "2026-05"
 export function mesAnterior(mes) {
   let [y, m] = String(mes).split('-').map(Number)

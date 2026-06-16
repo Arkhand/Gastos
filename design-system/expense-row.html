@@ -1,0 +1,59 @@
+<!-- @dsCard group="Componentes" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body{margin:0;padding:24px;background:radial-gradient(circle at 20% 10%,#f5ede2,#e7ded2 70%);color:#42352c}
+  .wrap{max-width:420px}
+  h2{font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;color:#9a8a7c;text-transform:uppercase;letter-spacing:.6px;margin:0 0 10px}
+  h2:not(:first-child){margin-top:22px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Solo lectura (Inicio)</h2>
+    <div class="day-group">
+      <div class="day-row"><span class="day-label">Hoy</span><span class="day-total">$12.300</span></div>
+      <div class="day-card">
+        <div class="exp-row">
+          <span class="exp-emoji cat-super">🛒</span>
+          <span class="exp-mid"><span class="exp-desc">Súper del finde</span><span class="exp-cat">Dani Mujer · Súper</span></span>
+          <span class="exp-amount">$8.400</span>
+        </div>
+        <div class="exp-row">
+          <span class="exp-emoji cat-comida">🍔</span>
+          <span class="exp-mid"><span class="exp-desc">Hamburguesas</span><span class="exp-cat">Dani Hombre · Comida</span></span>
+          <span class="exp-amount">$3.900</span>
+        </div>
+        <div class="exp-row">
+          <span class="exp-emoji cat-transporte">🚕</span>
+          <span class="exp-mid"><span class="exp-desc">Taxi a casa</span><span class="exp-cat">Transporte</span></span>
+          <span class="exp-amount">US$12</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>Editable (Resumen)</h2>
+    <div class="day-card">
+      <div class="exp-row exp-row-btn">
+        <span class="exp-emoji cat-salidas">🍻</span>
+        <span class="exp-mid"><span class="exp-desc">Birras con amigos</span><span class="exp-cat">Salidas</span></span>
+        <span class="exp-amount">$6.200</span>
+        <button type="button" class="exp-edit" aria-label="Editar gasto">✏️</button>
+      </div>
+      <div class="exp-row exp-row-btn">
+        <span class="exp-emoji cat-salud">💊</span>
+        <span class="exp-mid"><span class="exp-desc">Farmacia</span><span class="exp-cat">Salud</span></span>
+        <span class="exp-amount">$2.150</span>
+        <button type="button" class="exp-edit" aria-label="Editar gasto">✏️</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

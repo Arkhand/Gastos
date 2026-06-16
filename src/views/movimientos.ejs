@@ -1,0 +1,271 @@
+<%- include('partials/header', { titulo: 'Movimientos', user: user }) %>
+<div class="app-shell">
+<%- include('partials/sidebar', { tab: 'mov' }) %>
+<div class="app-root page-mov">
+  <header class="mv-top">
+    <div>
+      <div class="mv-title">Movimientos</div>
+      <div class="mv-subtitle">Todos los gastos de la familia, en detalle</div>
+    </div>
+    <div class="mv-top-actions">
+      <button class="mv-export" id="mv-export" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        Exportar
+      </button>
+      <select class="mv-mes" id="mov-mes" aria-label="Elegir mes">
+        <% meses.forEach(function (m) { %>
+          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.label %></option>
+        <% }) %>
+      </select>
+    </div>
+  </header>
+
+  <% if (!dbEnabled) { %>
+    <div class="recent-empty">Base de datos no configurada todavía.</div>
+  <% } else { %>
+    <div class="mv-kpis">
+      <div class="mv-kpi"><div class="mv-kpi-label">Movimientos</div><div class="mv-kpi-val" id="k-count">0</div><div class="mv-kpi-sub" id="k-count-sub">—</div></div>
+      <div class="mv-kpi"><div class="mv-kpi-label">Total ARS</div><div class="mv-kpi-val coral" id="k-ars">$0</div><div class="mv-kpi-sub">pesos</div></div>
+      <div class="mv-kpi"><div class="mv-kpi-label">Total USD</div><div class="mv-kpi-val" id="k-usd">US$0</div><div class="mv-kpi-sub">dólar bolsa</div></div>
+      <div class="mv-kpi"><div class="mv-kpi-label">Promedio</div><div class="mv-kpi-val" id="k-avg">$0</div><div class="mv-kpi-sub">por movimiento</div></div>
+    </div>
+
+    <div class="mv-filters">
+      <div class="filt filt-search">
+        <label for="mv-q">Buscar</label>
+        <input class="ctl" id="mv-q" type="text" placeholder="Descripción… ej: súper, taxi, farmacia" autocomplete="off" />
+      </div>
+      <div class="filt">
+        <label>Persona</label>
+        <div class="seg" id="mv-per">
+          <button type="button" data-v="all" class="is-on">Todos</button>
+          <% personas.forEach(function (p) { %>
+            <button type="button" data-v="<%= p.id %>"><%= p.emoji %> <%= p.label %></button>
+          <% }) %>
+        </div>
+      </div>
+      <div class="filt">
+        <label for="mv-cat">Categoría</label>
+        <select class="ctl" id="mv-cat">
+          <option value="all">Todas</option>
+          <% categorias.forEach(function (c) { %>
+            <option value="<%= c.id %>"><%= c.emoji %>  <%= c.label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="filt">
+        <label for="mv-cur">Moneda</label>
+        <select class="ctl" id="mv-cur">
+          <option value="all">Todas</option>
+          <option value="ARS">Pesos (ARS)</option>
+          <option value="USD">Dólares (USD)</option>
+        </select>
+      </div>
+      <div class="filt-right">
+        <div class="filt">
+          <label>Agrupar</label>
+          <div class="seg" id="mv-grp">
+            <button type="button" data-v="none" class="is-on">—</button>
+            <button type="button" data-v="cat">Categoría</button>
+            <button type="button" data-v="per">Persona</button>
+          </div>
+        </div>
+        <button class="mv-clear" id="mv-clear" type="button">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="mv-tablecard">
+      <div class="mv-scroll">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th class="col-per">Persona</th>
+              <th>Descripción</th>
+              <th>Categoría</th>
+              <th class="col-cargado">Cargado</th>
+              <th class="num">ARS</th>
+              <th class="num col-usd">USD</th>
+            </tr>
+          </thead>
+          <tbody id="mv-tbody"></tbody>
+        </table>
+      </div>
+      <div class="mv-foot">
+        <div class="mv-foot-label">Totales <span class="mv-foot-pill" id="foot-count">0 movimientos</span></div>
+        <div class="mv-foot-tot">
+          <div class="mv-foot-block"><div class="mv-foot-cap">ARS</div><div class="mv-foot-amt" id="foot-ars">$0</div></div>
+          <div class="mv-foot-block"><div class="mv-foot-cap">USD</div><div class="mv-foot-amt usd" id="foot-usd">US$0</div></div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <%- include('partials/tabbar', { tab: 'mov' }) %>
+</div>
+</div>
+
+<% if (dbEnabled) { %>
+<script>
+  window.__MOV = <%- filasJson %>;
+  window.__MES = "<%= mes %>";
+</script>
+<script>
+(function () {
+  'use strict'
+  var DATA = window.__MOV || []
+  var tbody = document.getElementById('mv-tbody')
+  if (!tbody) return
+
+  var state = { q: '', per: 'all', cat: 'all', cur: 'all', grp: 'none' }
+
+  function fmtARS(n) { return n == null ? '—' : '$' + Math.round(n).toLocaleString('es-AR') }
+  function fmtUSD(n) { return n == null ? '—' : 'US$' + Math.round(n).toLocaleString('es-AR') }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+    })
+  }
+  function sumArs(rows) { return rows.reduce(function (s, r) { return s + (r.ars || 0) }, 0) }
+  function sumUsd(rows) { return rows.reduce(function (s, r) { return s + (r.usd || 0) }, 0) }
+  function byFechaDesc(a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0 }
+  function setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v }
+
+  function filtered() {
+    return DATA.filter(function (r) {
+      return (state.per === 'all' || r.per === state.per) &&
+        (state.cat === 'all' || r.cat === state.cat) &&
+        (state.cur === 'all' || r.cur === state.cur) &&
+        (state.q === '' || r.desc.toLowerCase().indexOf(state.q.toLowerCase()) > -1)
+    })
+  }
+
+  function rowHTML(r) {
+    var badge = '<span class="cur-badge cur-' + (r.cur === 'USD' ? 'usd' : 'ars') + '">' + r.cur + '</span>'
+    var cargado = (r.cur === 'USD' ? 'US$' : '$') + Math.round(r.amt).toLocaleString('es-AR')
+    return '<tr>' +
+      '<td class="td-date">' + esc(r.fechaLabel) + '</td>' +
+      '<td class="col-per"><span class="per-cell"><span class="per-emoji">' + r.perEmoji + '</span>' + esc(r.perLabel) + '</span></td>' +
+      '<td class="desc-cell">' + esc(r.desc) + '</td>' +
+      '<td><span class="cat-chip cat-' + r.cat + '">' + r.catEmoji + ' ' + esc(r.catLabel) + '</span></td>' +
+      '<td class="col-cargado"><span class="cargado"><span class="num">' + cargado + '</span>' + badge + '</span></td>' +
+      '<td class="num">' + fmtARS(r.ars) + '</td>' +
+      '<td class="num usd-col col-usd">' + fmtUSD(r.usd) + '</td>' +
+      '</tr>'
+  }
+
+  function grpHeader(rows) {
+    var first = rows[0]
+    var label = state.grp === 'cat' ? first.catLabel : first.perLabel
+    var emoji = state.grp === 'cat' ? first.catEmoji : first.perEmoji
+    return '<tr class="grp-row"><td colspan="7"><div class="grp-inner">' +
+      '<span class="grp-name">' + emoji + ' ' + esc(label) + ' <span class="grp-count">· ' + rows.length + ' mov.</span></span>' +
+      '<span class="grp-tot"><span class="num">' + fmtARS(sumArs(rows)) + '</span><span class="num usd-col">' + fmtUSD(sumUsd(rows)) + '</span></span>' +
+      '</div></td></tr>'
+  }
+
+  function render() {
+    var rows = filtered()
+    var html = ''
+    if (rows.length === 0) {
+      html = '<tr class="empty-row"><td colspan="7">Sin movimientos con estos filtros 🔍</td></tr>'
+    } else if (state.grp === 'none') {
+      rows.slice().sort(byFechaDesc).forEach(function (r) { html += rowHTML(r) })
+    } else {
+      var keyOf = function (r) { return state.grp === 'cat' ? r.cat : r.per }
+      var groups = {}
+      rows.forEach(function (r) { (groups[keyOf(r)] = groups[keyOf(r)] || []).push(r) })
+      Object.keys(groups)
+        .sort(function (a, b) { return sumArs(groups[b]) - sumArs(groups[a]) })
+        .forEach(function (k) {
+          var g = groups[k].slice().sort(byFechaDesc)
+          html += grpHeader(g)
+          g.forEach(function (r) { html += rowHTML(r) })
+        })
+    }
+    tbody.innerHTML = html
+
+    var tArs = sumArs(rows), tUsd = sumUsd(rows)
+    setText('k-count', rows.length)
+    setText('k-count-sub', 'de ' + DATA.length + ' en el mes')
+    setText('k-ars', fmtARS(tArs))
+    setText('k-usd', fmtUSD(tUsd))
+    setText('k-avg', fmtARS(rows.length ? tArs / rows.length : 0))
+    setText('foot-count', rows.length + (rows.length === 1 ? ' movimiento' : ' movimientos'))
+    setText('foot-ars', fmtARS(tArs))
+    setText('foot-usd', fmtUSD(tUsd))
+  }
+
+  // --- Exportar CSV (de lo que está filtrado ahora) ---
+  function exportCSV() {
+    var rows = filtered().slice().sort(byFechaDesc)
+    var head = ['Fecha', 'Persona', 'Descripcion', 'Categoria', 'Moneda', 'Monto', 'ARS', 'USD']
+    var lines = [head.join(',')]
+    rows.forEach(function (r) {
+      lines.push([
+        r.fecha,
+        '"' + String(r.perLabel).replace(/"/g, '""') + '"',
+        '"' + String(r.desc).replace(/"/g, '""') + '"',
+        r.catLabel, r.cur, r.amt,
+        r.ars == null ? '' : r.ars,
+        r.usd == null ? '' : r.usd,
+      ].join(','))
+    })
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    var a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'movimientos-' + (window.__MES || '') + '.csv'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove() }, 0)
+  }
+
+  // --- Listeners ---
+  var q = document.getElementById('mv-q')
+  if (q) q.addEventListener('input', function (e) { state.q = e.target.value; render() })
+  var catSel = document.getElementById('mv-cat')
+  if (catSel) catSel.addEventListener('change', function (e) { state.cat = e.target.value; render() })
+  var curSel = document.getElementById('mv-cur')
+  if (curSel) curSel.addEventListener('change', function (e) { state.cur = e.target.value; render() })
+
+  function wireSeg(id, key) {
+    var seg = document.getElementById(id)
+    if (!seg) return
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button')
+      if (!b) return
+      seg.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-on') })
+      b.classList.add('is-on')
+      state[key] = b.getAttribute('data-v')
+      render()
+    })
+  }
+  wireSeg('mv-per', 'per')
+  wireSeg('mv-grp', 'grp')
+
+  var clear = document.getElementById('mv-clear')
+  if (clear) clear.addEventListener('click', function () {
+    state = { q: '', per: 'all', cat: 'all', cur: 'all', grp: 'none' }
+    if (q) q.value = ''
+    if (catSel) catSel.value = 'all'
+    if (curSel) curSel.value = 'all'
+    document.querySelectorAll('#mv-per button, #mv-grp button').forEach(function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-v') === 'all' || b.getAttribute('data-v') === 'none')
+    })
+    render()
+  })
+
+  var exp = document.getElementById('mv-export')
+  if (exp) exp.addEventListener('click', exportCSV)
+
+  // Cambio de mes: recarga server-side (el mes es el filtro macro)
+  var mesSel = document.getElementById('mov-mes')
+  if (mesSel) mesSel.addEventListener('change', function () {
+    window.location.href = '/movimientos?mes=' + encodeURIComponent(mesSel.value)
+  })
+
+  render()
+})()
+</script>
+<% } %>
+<%- include('partials/footer') %>
