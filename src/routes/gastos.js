@@ -11,13 +11,27 @@ import {
   nosotros,
 } from '../controllers/gastosController.js'
 import { interpretar, revisar } from '../controllers/iaController.js'
+import {
+  config,
+  crearCat,
+  editarCat,
+  eliminarCat,
+  revivirCat,
+} from '../controllers/configController.js'
 
 export const gastosRouter = Router()
 
-// Pantallas (pestañas): inicio / resumen / nosotros
+// Pantallas (pestañas): inicio / resumen / nosotros / config
 gastosRouter.get('/inicio', requireAuth, home)
 gastosRouter.get('/resumen', requireAuth, resumen)
 gastosRouter.get('/nosotros', requireAuth, nosotros)
+gastosRouter.get('/config', requireAuth, config)
+
+// Configuración de categorías (alta/edición/baja/restaurar). POST + redirect.
+gastosRouter.post('/config/categorias', requireAuth, crearCat)
+gastosRouter.post('/config/categorias/:id/editar', requireAuth, editarCat)
+gastosRouter.post('/config/categorias/:id/eliminar', requireAuth, eliminarCat)
+gastosRouter.post('/config/categorias/:id/revivir', requireAuth, revivirCat)
 
 // Acciones del gasto (la hoja inferior postea acá)
 gastosRouter.post('/nuevo', requireAuth, crear)

@@ -134,3 +134,77 @@ export async function eliminarGasto(_userId, id) {
   const { error } = await getClient().from('gastos').update({ eliminado: true }).eq('id', id)
   if (error) throw error
 }
+
+// ===== Categorías =====
+// Tabla `categorias`: la clave es un UUID; el `nombre` es texto único (entre las
+// activas). Los gastos guardan el UUID en `gastos.categoria`. La capa de cache
+// (config/categorias.js) consume listarCategorias() y mantiene helpers síncronos.
+
+// Trae TODAS las categorías (activas y con marca de borrado), ordenadas. La cache
+// se queda con las activas; la pantalla de Configuración muestra ambas.
+export async function listarCategorias() {
+  const { data, error } = await getClient()
+    .from('categorias')
+    .select('*')
+    .order('orden', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+// Alta de una categoría. El UUID lo genera la BD (default gen_random_uuid()).
+export async function crearCategoria(cat) {
+  const { data, error } = await getClient()
+    .from('categorias')
+    .insert({
+      nombre: cat.nombre,
+      emoji: cat.emoji ?? '✨',
+      color_bg: cat.color_bg ?? '#e3e0ea',
+      color_ink: cat.color_ink ?? '#5a5570',
+      hint: cat.hint ?? null,
+      orden: cat.orden ?? 100,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// Edita campos visibles/de IA de una categoría (nombre, emoji, hint, color).
+// No cambia el id (UUID), así los gastos asociados siguen apuntando a ella.
+export async function actualizarCategoria(id, campos) {
+  const { data, error } = await getClient()
+    .from('categorias')
+    .update(campos)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// Pone o saca la marca de borrado (soft-delete / revivir). Una categoría marcada
+// no se ofrece en la UI ni a la IA, pero sus gastos viejos siguen resolviéndola.
+export async function marcarCategoriaEliminada(id, eliminado) {
+  const { error } = await getClient()
+    .from('categorias')
+    .update({ eliminado: !!eliminado })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// Borrado físico (solo cuando la categoría NO tiene gastos asociados).
+export async function eliminarCategoriaFisica(id) {
+  const { error } = await getClient().from('categorias').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Cuántos gastos ACTIVOS usan esta categoría. Decide soft-delete vs borrado real.
+export async function contarGastosDeCategoria(id) {
+  const { count, error } = await getClient()
+    .from('gastos')
+    .select('id', { count: 'exact', head: true })
+    .eq('categoria', id)
+    .eq('eliminado', false)
+  if (error) throw error
+  return count ?? 0
+}

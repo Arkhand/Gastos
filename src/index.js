@@ -8,8 +8,13 @@ import { authRouter } from './routes/auth.js'
 import { paginasRouter } from './routes/paginas.js'
 import { gastosRouter } from './routes/gastos.js'
 import { errorHandler } from './middlewares/errorHandler.js'
+import { ensureCategoriasCargadas, cssVarsCategorias } from './config/categorias.js'
 
 const app = express()
+
+// Precargamos las categorías en cache al arrancar (best-effort: si la DB no está
+// o falla, queda el SEED y la app no se cuelga).
+ensureCategoriasCargadas().catch(() => {})
 
 // Vercel corre detrás de un proxy. Necesario para detectar https/host real
 // (lo usa la callbackURL relativa de Google) y para setear bien la cookie `secure`.
@@ -51,6 +56,19 @@ app.use((req, _res, next) => {
 
 app.use(passport.initialize())
 app.use(passport.session())
+
+// Colores de las categorías inyectados en el <head> (después de style.css). Cada
+// categoría define sus CSS vars por id; así una categoría nueva (UUID) tiene color
+// sin tocar el CSS estático. Refrescamos la cache acá para no servir colores viejos.
+app.use(async (_req, res, next) => {
+  try {
+    await ensureCategoriasCargadas()
+    res.locals.catColorsStyle = cssVarsCategorias()
+  } catch {
+    res.locals.catColorsStyle = ''
+  }
+  next()
+})
 
 // --- Rutas (cada router define URLs; la lógica vive en controllers/) ---
 app.use('/auth', authRouter) // login: /auth/google, /auth/google/callback, /auth/logout

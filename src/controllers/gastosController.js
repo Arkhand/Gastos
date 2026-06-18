@@ -8,7 +8,13 @@ import {
   corregirGasto,
   eliminarGasto,
 } from '../models/db.js'
-import { CATEGORIAS, catById, normalizarCategoria } from '../config/categorias.js'
+import {
+  getCategorias,
+  catById,
+  normalizarCategoria,
+  otrosId,
+  ensureCategoriasCargadas,
+} from '../config/categorias.js'
 import { PERSONAS, personaPorDefecto, personaLabel, normalizarPersona } from '../config/personas.js'
 import { iaEnabled } from '../models/ia.js'
 import { obtenerCotizacion, convertirMontos } from '../models/cotizacion.js'
@@ -90,6 +96,7 @@ function sugerenciasDescripcion(gastos, limite = 20) {
 // --- Inicio: mascota + micrófono + últimos gastos (SOLO LECTURA, no se edita acá) ---
 export const home = async (req, res, next) => {
   try {
+    await ensureCategoriasCargadas()
     let gastos = []
     if (dbEnabled) gastos = await listarGastos(req.user.id)
     const hoy = hoyAR()
@@ -123,7 +130,8 @@ export const home = async (req, res, next) => {
       dbEnabled,
       iaEnabled,
       sugerencias: sugerenciasDescripcion(gastos),
-      categorias: CATEGORIAS,
+      categorias: getCategorias(),
+      otrosId: otrosId(),
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),
       catById,
@@ -225,6 +233,7 @@ export const corregir = async (req, res, next) => {
 // --- Resumen: totales por categoría del mes + lista editable de gastos ---
 export const resumen = async (req, res, next) => {
   try {
+    await ensureCategoriasCargadas()
     let gastos = []
     if (dbEnabled) gastos = await listarGastos(req.user.id)
     const hoy = hoyAR()
@@ -245,10 +254,14 @@ export const resumen = async (req, res, next) => {
     const porCat = {}
     for (const g of gastosMes) {
       if (g.moneda !== 'ARS') continue
-      const id = g.categoria || 'otros'
+      // normalizarCategoria mapea null/categoría archivada/inexistente al id de
+      // "Otros", así esos gastos suman a una fila visible (no se pierden del total)
+      // y quedan consistentes con la lista (catById también cae en "Otros").
+      const id = normalizarCategoria(g.categoria)
       porCat[id] = (porCat[id] ?? 0) + Number(g.monto)
     }
-    const filasBase = CATEGORIAS.map((c) => ({ ...c, total: porCat[c.id] ?? 0 }))
+    const filasBase = getCategorias()
+      .map((c) => ({ ...c, total: porCat[c.id] ?? 0 }))
       .filter((c) => c.total > 0)
       .sort((a, b) => b.total - a.total)
     const totalMesNum = filasBase.reduce((s, c) => s + c.total, 0)
@@ -256,14 +269,17 @@ export const resumen = async (req, res, next) => {
       ...c,
       pct: totalMesNum ? Math.round((c.total / totalMesNum) * 100) : 0,
     }))
-    // Gradiente para el gráfico de torta (grados exactos por categoría).
+    // Gradiente para el gráfico de torta (grados exactos por categoría). Usamos el
+    // color de la categoría directo (no la CSS var por id) para que cualquier
+    // categoría nueva tenga color sin depender de reglas CSS estáticas.
     let deg = 0
     const stops = filasBase.map((c) => {
       const start = deg
       deg += totalMesNum ? (c.total / totalMesNum) * 360 : 0
-      return `var(--c-${c.id}) ${start.toFixed(2)}deg ${deg.toFixed(2)}deg`
+      return `${c.color_bg} ${start.toFixed(2)}deg ${deg.toFixed(2)}deg`
     })
-    const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--c-otros)'
+    const colorOtros = catById(otrosId()).color_bg
+    const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : colorOtros
     // Total por persona (ARS y USD), sumando los montos convertidos del mes.
     const porPersona = {}
     for (const g of gastosMes) {
@@ -292,7 +308,8 @@ export const resumen = async (req, res, next) => {
       totalMes: fmtMonto('ARS', totalMesNum),
       pieGradient,
       personasTotales,
-      categorias: CATEGORIAS,
+      categorias: getCategorias(),
+      otrosId: otrosId(),
       personas: PERSONAS,
       personaDefault: personaPorDefecto(req.user.email),
       catById,

@@ -26,6 +26,9 @@
   var monedaToggle = document.getElementById('moneda-toggle')
   var fCategoria = document.getElementById('f-categoria')
   var catChips = document.getElementById('cat-chips')
+  // Id (UUID) de la categoría "Otros": el default de la hoja y el fallback cuando
+  // un gasto no trae categoría. Lo define el servidor (data-otros en #cat-chips).
+  var OTROS_ID = (catChips && catChips.getAttribute('data-otros')) || ''
   var personaSeg = document.getElementById('persona-seg')
   var fPersona = document.getElementById('f-persona')
   // Persona preseleccionada según el usuario logueado (la define el servidor).
@@ -225,7 +228,7 @@
     if (monto) monto.value = ''
     selectMoneda('ARS')
     selectPersona(personaDefault)
-    selectChip('otros')
+    selectChip(OTROS_ID)
     selectDatePill('hoy')
   }
 
@@ -236,7 +239,7 @@
     selectMoneda(g.moneda)
     // Si Gemini no detectó a la persona, dejamos la preseleccionada por defecto.
     if (g.persona) selectPersona(g.persona)
-    selectChip(g.categoria || 'otros')
+    selectChip(g.categoria || OTROS_ID)
     setFecha(g.fecha)
   }
 
@@ -287,7 +290,7 @@
     var row = document.querySelector('.exp-row[data-id="' + id + '"]')
     if (!row) return
     var origDesc = row.getAttribute('data-descripcion') || ''
-    var origCat = row.getAttribute('data-categoria') || 'otros'
+    var origCat = row.getAttribute('data-categoria') || OTROS_ID
     if (origDesc.trim().length < 3) return
     corrigiendo = true
     var ctrl = new AbortController()
@@ -366,7 +369,7 @@
     if (monto) monto.value = row.getAttribute('data-monto') || ''
     selectMoneda(row.getAttribute('data-moneda'))
     selectPersona(row.getAttribute('data-nombre'))
-    selectChip(row.getAttribute('data-categoria') || 'otros')
+    selectChip(row.getAttribute('data-categoria') || OTROS_ID)
     setFecha(row.getAttribute('data-fecha'))
     if (form) form.action = '/gastos/' + id + '/editar'
     if (sheetTitle) sheetTitle.textContent = 'Editar gasto'

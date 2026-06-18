@@ -2,8 +2,21 @@
 // si uno falla (cuota agotada, error de red, etc.) pasamos al siguiente.
 // IMPORTANTE: las API keys viven SOLO en el servidor (config.groq / config.gemini).
 // El navegador manda el texto a /api/interpretar; nunca ve las claves.
+//
+// Las categorías ya NO son una lista fija: salen de la BD (config/categorias.js).
+// A la IA le mostramos los NOMBRES de las categorías activas (legibles) y le
+// pedimos que devuelva uno; del lado servidor mapeamos ese nombre al UUID que se
+// guarda en `gastos.categoria`. (Pedirle un UUID directo es frágil: los modelos
+// los alucinan.)
 import { config } from '../config/env.js'
-import { CATEGORIA_IDS, normalizarCategoria } from '../config/categorias.js'
+import {
+  getCategorias,
+  catById,
+  normalizarCategoria,
+  normalizarNombre,
+  otrosId,
+  ensureCategoriasCargadas,
+} from '../config/categorias.js'
 import { PERSONA_ENUM, normalizarPersona } from '../config/personas.js'
 import { hoyAR } from '../utils/fecha.js'
 
@@ -16,44 +29,51 @@ const MODELOS_ACTIVOS = config.iaModelos.filter((m) => config[m.provider]?.enabl
 export const iaEnabled = MODELOS_ACTIVOS.length > 0
 
 // Schema de salida estructurada (lo entiende Gemini de forma nativa; para Groq
-// se lo pedimos por prompt + modo JSON).
-const responseSchema = {
-  type: 'OBJECT',
-  properties: {
-    descripcion: { type: 'STRING' },
-    monto: { type: 'NUMBER' },
-    moneda: { type: 'STRING', enum: ['ARS', 'USD'] },
-    categoria: { type: 'STRING', enum: CATEGORIA_IDS },
-    persona: { type: 'STRING', enum: PERSONA_ENUM },
-    fecha: { type: 'STRING', description: 'Fecha en formato YYYY-MM-DD' },
-  },
-  required: ['descripcion', 'monto', 'moneda', 'categoria', 'persona', 'fecha'],
+// se lo pedimos por prompt + modo JSON). El enum de categoría son los NOMBRES
+// activos del momento, por eso se construye por llamada.
+function buildResponseSchema(nombres) {
+  return {
+    type: 'OBJECT',
+    properties: {
+      descripcion: { type: 'STRING' },
+      monto: { type: 'NUMBER' },
+      moneda: { type: 'STRING', enum: ['ARS', 'USD'] },
+      categoria: { type: 'STRING', enum: nombres },
+      persona: { type: 'STRING', enum: PERSONA_ENUM },
+      fecha: { type: 'STRING', description: 'Fecha en formato YYYY-MM-DD' },
+    },
+    required: ['descripcion', 'monto', 'moneda', 'categoria', 'persona', 'fecha'],
+  }
 }
 
 // Schema chico para la revisión de la carga manual (solo descripción + categoría).
-const responseSchemaRevision = {
-  type: 'OBJECT',
-  properties: {
-    descripcion: { type: 'STRING' },
-    categoria: { type: 'STRING', enum: CATEGORIA_IDS },
-  },
-  required: ['descripcion', 'categoria'],
+function buildResponseSchemaRevision(nombres) {
+  return {
+    type: 'OBJECT',
+    properties: {
+      descripcion: { type: 'STRING' },
+      categoria: { type: 'STRING', enum: nombres },
+    },
+    required: ['descripcion', 'categoria'],
+  }
 }
 
-// Guía de categorías compartida por los prompts de IA (interpretar y revisar).
-const GUIA_CATEGORIAS = [
-  '    · comida — comer afuera, delivery, restaurante, café, panadería.',
-  '    · super — supermercado, almacén, verdulería, carnicería, kiosco (mercadería).',
-  '    · transporte — nafta, SUBE, colectivo, taxi, Uber, peaje, estacionamiento.',
-  '    · salidas — bar, boliche, cine, tragos, ocio.',
-  '    · salud — farmacia, remedios, médico, obra social.',
-  '    · hogar — muebles, ferretería, limpieza, cosas para la casa.',
-  '    · servicios — luz, gas, agua, internet, teléfono, cable, expensas y suscripciones (Netflix, Spotify, etc.).',
-  '    · otros — si no encaja claramente en ninguna.',
-]
+// Guía de categorías para el prompt: una línea por categoría que tenga `hint`
+// (la pista que cargó el usuario). Las que no tienen hint igual están en el enum;
+// simplemente no aparecen en la guía. Formato: "    · Nombre — pista".
+function buildGuia(cats) {
+  return cats
+    .filter((c) => c.hint && String(c.hint).trim())
+    .map((c) => `    · ${c.nombre} — ${String(c.hint).trim()}`)
+}
 
-function construirPrompt(texto) {
+function listaNombres(cats) {
+  return cats.map((c) => c.nombre).join(', ')
+}
+
+function construirPrompt(texto, cats) {
   const hoy = hoyAR()
+  const guia = buildGuia(cats)
   return [
     '# Rol',
     'Sos un asistente que extrae UN gasto a partir de una frase dicha por voz en español rioplatense (Argentina). Devolvés SOLO un objeto JSON válido, sin texto extra ni explicaciones.',
@@ -68,8 +88,8 @@ function construirPrompt(texto) {
     '    · El punto separa miles y la coma decimales: "2.500" = 2500; "1.250,50" = 1250.5.',
     '    · Si no se menciona ningún monto, devolvé 0.',
     '- moneda (string): "USD" SOLO si menciona dólares, "usd", "verdes" o "dólar"; en cualquier otro caso "ARS".',
-    `- categoria (string): EXACTAMENTE uno de estos ids: ${CATEGORIA_IDS.join(', ')}. Guía:`,
-    ...GUIA_CATEGORIAS,
+    `- categoria (string): EXACTAMENTE uno de estos nombres (tal cual, respetando mayúsculas): ${listaNombres(cats)}.`,
+    ...(guia.length ? ['  Guía:', ...guia] : []),
     '- persona (string): a nombre de quién fue el gasto, como EMAIL:',
     '    · "musiald@gmail.com" si dice Daniel, "él", "el varón", "el hombre" o un nombre de varón.',
     '    · "danielapaulacastelli@gmail.com" si dice Daniela, "ella", "la mujer" o un nombre de mujer.',
@@ -78,17 +98,18 @@ function construirPrompt(texto) {
     '',
     '# Reglas',
     '- No inventes datos que la frase no dice; ante la duda usá los defaults (descripcion "", monto 0, persona "Desconocido").',
-    '- Frase vacía o sin gasto entendible → descripcion "", monto 0, categoria "otros", persona "Desconocido", fecha hoy.',
+    '- La categoría tiene que ser uno de los nombres de la lista, exactamente. Si ninguna encaja, usá "Otros".',
+    '- Frase vacía o sin gasto entendible → descripcion "", monto 0, categoria "Otros", persona "Desconocido", fecha hoy.',
     '',
     '# Ejemplos (suponiendo que hoy fuese 2025-03-10)',
     'Frase: "ayer gasté 2 lucas en el super para Daniela"',
-    '{"descripcion":"Súper","monto":2000,"moneda":"ARS","categoria":"super","persona":"danielapaulacastelli@gmail.com","fecha":"2025-03-09"}',
+    '{"descripcion":"Súper","monto":2000,"moneda":"ARS","categoria":"Súper","persona":"danielapaulacastelli@gmail.com","fecha":"2025-03-09"}',
     'Frase: "pagué 15 dólares de Netflix"',
-    '{"descripcion":"Netflix","monto":15,"moneda":"USD","categoria":"servicios","persona":"Desconocido","fecha":"2025-03-10"}',
+    '{"descripcion":"Netflix","monto":15,"moneda":"USD","categoria":"Servicios","persona":"Desconocido","fecha":"2025-03-10"}',
     'Frase: "cargué nafta, 30 mil, la puso él"',
-    '{"descripcion":"Nafta","monto":30000,"moneda":"ARS","categoria":"transporte","persona":"musiald@gmail.com","fecha":"2025-03-10"}',
+    '{"descripcion":"Nafta","monto":30000,"moneda":"ARS","categoria":"Transporte","persona":"musiald@gmail.com","fecha":"2025-03-10"}',
     'Frase: "ehh no sé"',
-    '{"descripcion":"","monto":0,"moneda":"ARS","categoria":"otros","persona":"Desconocido","fecha":"2025-03-10"}',
+    '{"descripcion":"","monto":0,"moneda":"ARS","categoria":"Otros","persona":"Desconocido","fecha":"2025-03-10"}',
     '',
     '# Frase a interpretar',
     `"${texto}"`,
@@ -98,47 +119,45 @@ function construirPrompt(texto) {
 // Prompt enfocado para la carga MANUAL: corrige typos/formatea la descripción y
 // verifica la categoría (la cambia solo si claramente no corresponde). Estructura
 // Rol/Tarea/Reglas/Formato/Ejemplos (metodología prompt-engineer).
-function construirPromptRevision(descripcion, categoria) {
+function construirPromptRevision(descripcion, categoriaNombre, cats) {
+  const guia = buildGuia(cats)
   return [
     '# Rol',
     'Sos un asistente que corrige y formatea la descripción de UN gasto cargado a mano, y verifica su categoría. Español rioplatense (Argentina). Devolvés SOLO un objeto JSON válido, sin texto extra ni explicaciones.',
     '',
     '# Tarea',
     '1. descripcion: corregí errores de tipeo, incluso fonéticos o de tecla aunque la palabra parezca rara (p. ej. "nasta"→"nafta", "supermecado"→"supermercado"), pero SIN inventar datos que el texto no diga. Dejala prolija: capitalizada (primera letra mayúscula), concisa (pocas palabras), SIN el monto ni símbolos de moneda. Respetá las mayúsculas de marcas y siglas (YPF, SUBE, Netflix); no traduzcas ni cambies nombres de marcas/comercios.',
-    '2. categoria: si la dada es "otros", NO la tomes como elegida — asigná la que MEJOR describa el gasto. Si es una categoría específica (distinta de "otros"), MANTENELA salvo que claramente no corresponda.',
+    '2. categoria: si la dada es "Otros", NO la tomes como elegida — asigná la que MEJOR describa el gasto. Si es una categoría específica (distinta de "Otros"), MANTENELA salvo que claramente no corresponda.',
     '',
-    `# Categorías válidas (ids): ${CATEGORIA_IDS.join(', ')}. Guía:`,
-    ...GUIA_CATEGORIAS,
+    `# Categorías válidas (nombres exactos): ${listaNombres(cats)}.`,
+    ...(guia.length ? ['  Guía:', ...guia] : []),
     '',
     '# Reglas',
     '- No inventes ni expandas la descripción más allá de corregir/formatear.',
-    '- Si la categoría dada es específica (no "otros"), ante la duda conservala; si es "otros", elegí la mejor.',
+    '- La categoría tiene que ser uno de los nombres de la lista, exactamente.',
+    '- Si la categoría dada es específica (no "Otros"), ante la duda conservala; si es "Otros", elegí la mejor.',
     '- descripcion vacía o sin sentido → "descripcion":"" y conservá la categoría dada.',
     '',
     '# Formato',
-    'Devolvé exactamente: {"descripcion": <string>, "categoria": <uno de los ids válidos>}',
+    'Devolvé exactamente: {"descripcion": <string>, "categoria": <uno de los nombres válidos>}',
     '',
     '# Ejemplos',
-    'Entrada: descripcion="netflxi", categoria="otros"',
-    '{"descripcion":"Netflix","categoria":"servicios"}',
-    'Entrada: descripcion="nasta", categoria="otros"',
-    '{"descripcion":"Nafta","categoria":"transporte"}',
-    'Entrada: descripcion="nafta axion", categoria="comida"',
-    '{"descripcion":"Nafta Axion","categoria":"transporte"}',
-    'Entrada: descripcion="cafe con un amigo", categoria="salidas"',
-    '{"descripcion":"Café con un amigo","categoria":"salidas"}',
-    'Entrada: descripcion="super 5000", categoria="super"',
-    '{"descripcion":"Súper","categoria":"super"}',
-    'Entrada: descripcion="asdfgh", categoria="otros"',
-    '{"descripcion":"","categoria":"otros"}',
+    'Entrada: descripcion="netflxi", categoria="Otros"',
+    '{"descripcion":"Netflix","categoria":"Servicios"}',
+    'Entrada: descripcion="nasta", categoria="Otros"',
+    '{"descripcion":"Nafta","categoria":"Transporte"}',
+    'Entrada: descripcion="cafe con un amigo", categoria="Salidas"',
+    '{"descripcion":"Café con un amigo","categoria":"Salidas"}',
+    'Entrada: descripcion="asdfgh", categoria="Otros"',
+    '{"descripcion":"","categoria":"Otros"}',
     '',
     '# Gasto a revisar',
-    `descripcion="${descripcion}", categoria="${categoria}"`,
+    `descripcion="${descripcion}", categoria="${categoriaNombre}"`,
   ].join('\n')
 }
 
 // --- Gemini (Google Generative Language API) ---
-async function llamarGemini(model, prompt, schema = responseSchema) {
+async function llamarGemini(model, prompt, schema) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.gemini.apiKey}`
   const res = await fetch(url, {
     method: 'POST',
@@ -187,28 +206,40 @@ async function llamarGroq(model, prompt) {
   return JSON.parse(txt)
 }
 
+// Mapea el NOMBRE de categoría que devolvió la IA al UUID (id) que se guarda en la
+// BD. Compara sin acentos/mayúsculas para tolerar diferencias ("super" ≈ "Súper").
+// Si no matchea ninguna activa, devuelve el id de "Otros".
+function nombreCategoriaAId(nombre, cats) {
+  const objetivo = normalizarNombre(nombre)
+  const hit = cats.find((c) => normalizarNombre(c.nombre) === objetivo)
+  return hit ? hit.id : otrosId()
+}
+
 // Pasa el JSON crudo del modelo a la forma que espera el front. No forzamos
 // defaults que tapen lo que el modelo NO pudo mapear: descripcion vacía, monto 0
 // y persona null le avisan al front que falta completar a mano (warning). Lo que
-// sí tiene default natural es fecha (hoy) y moneda (ARS).
-function normalizar(parsed) {
+// sí tiene default natural es fecha (hoy) y moneda (ARS). La categoría llega como
+// nombre y la convertimos al id (UUID).
+function normalizar(parsed, cats) {
   return {
     descripcion: String(parsed.descripcion ?? '').trim(),
     monto: Number(parsed.monto) || 0,
     moneda: parsed.moneda === 'USD' ? 'USD' : 'ARS',
-    categoria: CATEGORIA_IDS.includes(parsed.categoria) ? parsed.categoria : 'otros',
+    categoria: nombreCategoriaAId(parsed.categoria, cats),
     persona: normalizarPersona(parsed.persona),
     fecha: /^\d{4}-\d{2}-\d{2}$/.test(parsed.fecha) ? parsed.fecha : hoyAR(),
   }
 }
 
 // Revisión de la carga manual: solo descripción (prolija) + categoría válida.
-// Si el modelo devuelve una categoría inválida/vacía (p. ej. Groq sin enum),
-// CONSERVAMOS la que eligió la persona en vez de degradarla a 'otros'.
-function normalizarRevision(parsed, categoriaOriginal) {
+// Si el modelo devuelve una categoría que no matchea ninguna activa, CONSERVAMOS
+// la que eligió la persona (id original) en vez de degradarla a "Otros".
+function normalizarRevision(parsed, idOriginal, cats) {
+  const txt = String(parsed.categoria ?? '').trim()
+  const id = txt ? nombreCategoriaAId(txt, cats) : idOriginal
   return {
     descripcion: String(parsed.descripcion ?? '').trim(),
-    categoria: CATEGORIA_IDS.includes(parsed.categoria) ? parsed.categoria : categoriaOriginal,
+    categoria: id,
   }
 }
 
@@ -246,23 +277,36 @@ export async function interpretarGasto(texto) {
   if (!iaEnabled) {
     throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
   }
-  const gasto = await ejecutarModelos(construirPrompt(texto), responseSchema, normalizar)
+  await ensureCategoriasCargadas()
+  const cats = getCategorias() // solo activas: las borradas no se ofrecen a la IA
+  const nombres = cats.map((c) => c.nombre)
+  const gasto = await ejecutarModelos(
+    construirPrompt(texto, cats),
+    buildResponseSchema(nombres),
+    (parsed) => normalizar(parsed, cats),
+  )
   // No confiamos la moneda al modelo: la fijamos por las palabras del usuario.
   gasto.moneda = monedaDesdeTexto(texto)
   return gasto
 }
 
 // Corrige typos/formatea la descripción y verifica la categoría (carga manual).
-export async function revisarGasto(descripcion, categoria) {
+// Recibe el id (UUID) de categoría que mandó el front; a la IA le pasamos el
+// NOMBRE de esa categoría y mapeamos la respuesta de vuelta a id.
+export async function revisarGasto(descripcion, categoriaId) {
   if (!iaEnabled) {
     throw new Error('IA no configurada (falta GROQ_API_KEY y/o GEMINI_API_KEY).')
   }
+  await ensureCategoriasCargadas()
+  const cats = getCategorias()
+  const nombres = cats.map((c) => c.nombre)
   // La categoría que mandó el front ya es un id válido; es el fallback si el
   // modelo devuelve algo fuera de la lista.
-  const original = normalizarCategoria(categoria)
+  const idOriginal = normalizarCategoria(categoriaId)
+  const nombreOriginal = catById(idOriginal).nombre
   return ejecutarModelos(
-    construirPromptRevision(descripcion, categoria),
-    responseSchemaRevision,
-    (parsed) => normalizarRevision(parsed, original),
+    construirPromptRevision(descripcion, nombreOriginal, cats),
+    buildResponseSchemaRevision(nombres),
+    (parsed) => normalizarRevision(parsed, idOriginal, cats),
   )
 }

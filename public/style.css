@@ -657,6 +657,39 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
   table.tbl { min-width:0; } /* en escritorio entra sin scroll horizontal */
 }
 
+/* ---------- Configuración (categorías) ---------- */
+.page-config { padding:20px 16px 90px; }
+.config { max-width:760px; margin:0 auto; }
+.config h1 { font-family:var(--font-d); font-weight:700; font-size:26px; margin:6px 0 4px; }
+.cfg-intro { color:var(--ink-soft); font-size:14px; margin:0 0 16px; line-height:1.45; }
+.cfg-alert { padding:11px 14px; border-radius:14px; font-weight:700; font-size:14px; margin-bottom:16px; }
+.cfg-alert-ok { background:#cdeccf; color:var(--mint-deep); }
+.cfg-alert-err { background:#ffd9cf; color:var(--coral-deep); }
+.cfg-card { background:var(--card); border-radius:20px; padding:16px; margin-bottom:16px; box-shadow:0 6px 22px rgba(0,0,0,.05); }
+.cfg-card-title { font-family:var(--font-d); font-weight:700; font-size:16px; margin-bottom:12px; }
+.cfg-new-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.cfg-emoji-inp { width:56px; text-align:center; font-size:20px; flex-shrink:0; }
+.cfg-nombre-inp { flex:1; min-width:0; }
+.cfg-hint-inp { width:100%; font-size:13px; }
+.cfg-add-btn { flex:0 0 auto; padding:11px 18px; margin:0; font-size:15px; box-shadow:0 6px 14px rgba(224,106,62,.3); }
+.cfg-list { display:flex; flex-direction:column; gap:10px; }
+.cfg-item { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:#fffaf3; border:1px solid #f0e7da; }
+.cfg-item-off { opacity:.7; }
+.cfg-item-main { display:flex; align-items:center; gap:10px; flex:1; min-width:0; flex-wrap:wrap; }
+.cfg-hint-txt { font-size:12.5px; color:var(--ink-soft); }
+.cfg-item-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
+.cfg-btn { padding:7px 13px; border-radius:11px; border:none; font-family:var(--font-d); font-weight:600; font-size:13px; background:#f3ebdf; color:var(--ink); }
+.cfg-edit-btn:hover { background:#ece1d2; }
+.cfg-del-btn { background:none; color:var(--coral-deep); border:1.5px solid #f0d6cc; }
+.cfg-revive-btn { background:#cdeccf; color:var(--mint-deep); }
+.cfg-lock { font-size:15px; opacity:.6; }
+.cfg-edit-form { flex-basis:100%; margin-top:8px; padding-top:10px; border-top:1px dashed #ecdfce; }
+
+@media (min-width:900px) {
+  .page-config { padding:30px 38px 60px; }
+  .config h1 { font-size:30px; }
+}
+
 /* =========================================================
    RESUMEN — la vista "Gastos" muestra la lista (mobile) o la
    tabla detallada (desktop). La lista queda en el DOM en desktop

@@ -49,14 +49,14 @@
 
     <div class="field">
       <label>Categoría</label>
-      <div class="chips" id="cat-chips">
+      <div class="chips" id="cat-chips" data-otros="<%= typeof otrosId !== 'undefined' ? otrosId : '' %>">
         <% categorias.forEach(function (c) { %>
           <button type="button" class="chip cat-<%= c.id %>" data-cat="<%= c.id %>">
             <span class="chip-emoji"><%= c.emoji %></span><%= c.label %>
           </button>
         <% }) %>
       </div>
-      <input type="hidden" name="categoria" id="f-categoria" value="otros" />
+      <input type="hidden" name="categoria" id="f-categoria" value="<%= typeof otrosId !== 'undefined' ? otrosId : '' %>" />
     </div>
 
     <div class="field">
