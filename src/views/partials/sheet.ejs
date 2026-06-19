@@ -48,13 +48,17 @@
     </div>
 
     <div class="field">
-      <label>Categoría</label>
-      <div class="chips" id="cat-chips" data-otros="<%= typeof otrosId !== 'undefined' ? otrosId : '' %>">
-        <% categorias.forEach(function (c) { %>
-          <button type="button" class="chip cat-<%= c.id %>" data-cat="<%= c.id %>">
-            <span class="chip-emoji"><%= c.emoji %></span><%= c.label %>
-          </button>
-        <% }) %>
+      <label for="cat-select">Categoría</label>
+      <%# Desplegable: arranca en "Automático" (la IA elige al guardar). En modo
+          edición el JS quita la opción Automático (siempre manual). El valor real
+          va en el hidden #f-categoria; "__auto__" significa que decide la IA. %>
+      <div class="cat-select-wrap" data-otros="<%= typeof otrosId !== 'undefined' ? otrosId : '' %>">
+        <select class="inp cat-select" id="cat-select">
+          <option value="__auto__" data-emoji="✨">✨ Automático (lo elige la IA)</option>
+          <% categorias.forEach(function (c) { %>
+            <option value="<%= c.id %>" data-emoji="<%= c.emoji %>"><%= c.emoji %>  <%= c.label %></option>
+          <% }) %>
+        </select>
       </div>
       <input type="hidden" name="categoria" id="f-categoria" value="<%= typeof otrosId !== 'undefined' ? otrosId : '' %>" />
     </div>

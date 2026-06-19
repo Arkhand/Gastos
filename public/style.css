@@ -657,6 +657,18 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
   table.tbl { min-width:0; } /* en escritorio entra sin scroll horizontal */
 }
 
+/* ---------- Desplegable de categoría (hoja de carga) ---------- */
+.cat-select-wrap { position:relative; }
+.cat-select {
+  width:100%; appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  padding-right:42px; cursor:pointer; background:#fff;
+}
+.cat-select-wrap::after {
+  content:''; position:absolute; right:16px; top:50%; width:10px; height:10px;
+  border-right:2.5px solid var(--ink-soft); border-bottom:2.5px solid var(--ink-soft);
+  transform:translateY(-65%) rotate(45deg); pointer-events:none;
+}
+
 /* ---------- Configuración (categorías) ---------- */
 .page-config { padding:20px 16px 90px; }
 .config { max-width:760px; margin:0 auto; }

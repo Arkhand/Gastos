@@ -25,10 +25,35 @@
   var moneySign = document.getElementById('money-sign')
   var monedaToggle = document.getElementById('moneda-toggle')
   var fCategoria = document.getElementById('f-categoria')
-  var catChips = document.getElementById('cat-chips')
-  // Id (UUID) de la categoría "Otros": el default de la hoja y el fallback cuando
-  // un gasto no trae categoría. Lo define el servidor (data-otros en #cat-chips).
-  var OTROS_ID = (catChips && catChips.getAttribute('data-otros')) || ''
+  var catSelect = document.getElementById('cat-select')
+  var catSelectWrap = catSelect ? catSelect.closest('.cat-select-wrap') : null
+  // Id (UUID) de la categoría "Otros": fallback cuando un gasto no trae categoría.
+  // Lo define el servidor (data-otros en .cat-select-wrap).
+  var OTROS_ID = (catSelectWrap && catSelectWrap.getAttribute('data-otros')) || ''
+  // Valor especial del desplegable que significa "que la categoría la elija la IA".
+  var CAT_AUTO = '__auto__'
+  // ¿La opción "Automático" está disponible en el desplegable? (sí en alta/voz, no
+  // en edición). El submit lo usa para decidir si la IA puede tocar la categoría.
+  function autoDisponible() {
+    return !!(catSelect && catSelect.querySelector('option[value="' + CAT_AUTO + '"]'))
+  }
+  function categoriaEsAuto() {
+    return !!(catSelect && catSelect.value === CAT_AUTO)
+  }
+  // Muestra u oculta la opción "Automático". En edición la sacamos (siempre manual).
+  function setAutoOption(visible) {
+    if (!catSelect) return
+    var opt = catSelect.querySelector('option[value="' + CAT_AUTO + '"]')
+    if (visible && !opt) {
+      opt = document.createElement('option')
+      opt.value = CAT_AUTO
+      opt.setAttribute('data-emoji', '✨')
+      opt.textContent = '✨ Automático (lo elige la IA)'
+      catSelect.insertBefore(opt, catSelect.firstChild)
+    } else if (!visible && opt) {
+      opt.remove()
+    }
+  }
   var personaSeg = document.getElementById('persona-seg')
   var fPersona = document.getElementById('f-persona')
   // Persona preseleccionada según el usuario logueado (la define el servidor).
@@ -166,13 +191,21 @@
   function openSheet() { document.body.classList.add('sheet-open') }
   function closeSheet() { document.body.classList.remove('sheet-open') }
 
-  function selectChip(catId) {
-    if (!catChips) return
-    var btns = catChips.querySelectorAll('.chip')
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle('is-on', btns[i].getAttribute('data-cat') === catId)
+  // Selecciona una categoría en el desplegable y refleja el valor en el hidden.
+  // value puede ser un id de categoría o CAT_AUTO ("__auto__" = la elige la IA).
+  // Si el value no existe entre las opciones (p. ej. categoría archivada), cae en
+  // Automático si está disponible, o en "Otros".
+  function setCategoria(value) {
+    if (!catSelect) {
+      if (fCategoria) fCategoria.value = value === CAT_AUTO ? '' : value
+      return
     }
-    if (fCategoria) fCategoria.value = catId
+    var existe = !!catSelect.querySelector('option[value="' + (window.CSS && CSS.escape ? CSS.escape(value) : value) + '"]')
+    if (!existe) value = autoDisponible() ? CAT_AUTO : OTROS_ID
+    catSelect.value = value
+    // El hidden lleva el id real para el form. En Automático lo dejamos en "Otros"
+    // como placeholder: la IA lo reemplaza al revisar de fondo tras guardar.
+    if (fCategoria) fCategoria.value = value === CAT_AUTO ? OTROS_ID : value
   }
 
   function selectMoneda(m) {
@@ -228,7 +261,12 @@
     if (monto) monto.value = ''
     selectMoneda('ARS')
     selectPersona(personaDefault)
-    selectChip(OTROS_ID)
+    // Por defecto, categoría Automática (la elige la IA). En edición se cambia a
+    // manual más abajo. Si la IA está apagada, no ofrecemos "Automático" (no habría
+    // quién clasifique): arranca en "Otros".
+    var iaOn = form && form.getAttribute('data-ia') === 'true'
+    setAutoOption(iaOn)
+    setCategoria(iaOn ? CAT_AUTO : OTROS_ID)
     selectDatePill('hoy')
   }
 
@@ -239,7 +277,9 @@
     selectMoneda(g.moneda)
     // Si Gemini no detectó a la persona, dejamos la preseleccionada por defecto.
     if (g.persona) selectPersona(g.persona)
-    selectChip(g.categoria || OTROS_ID)
+    // La voz ya pasó por la IA: si dedujo una categoría, la mostramos elegida; si
+    // no, queda en Automático para que la IA la complete al guardar.
+    setCategoria(g.categoria || (autoDisponible() ? CAT_AUTO : OTROS_ID))
     setFecha(g.fecha)
   }
 
@@ -250,14 +290,13 @@
   }
 
   // Actualiza una fila ya guardada con la corrección de la IA, SIN recargar. Lee el
-  // emoji/etiqueta de la categoría de los chips que ya están en la hoja.
+  // emoji/etiqueta de la categoría de las opciones del desplegable de la hoja.
   function actualizarFila(id, descripcion, catId) {
     var row = document.querySelector('.exp-row[data-id="' + id + '"]')
     if (!row) return
-    var chip = catChips ? catChips.querySelector('.chip[data-cat="' + catId + '"]') : null
-    var emojiEl = chip ? chip.querySelector('.chip-emoji') : null
-    var emoji = emojiEl ? emojiEl.textContent : ''
-    var catLabel = chip ? chip.textContent.replace(emoji, '').trim() : catId
+    var opt = catSelect ? catSelect.querySelector('option[value="' + (window.CSS && CSS.escape ? CSS.escape(catId) : catId) + '"]') : null
+    var emoji = opt ? (opt.getAttribute('data-emoji') || '') : ''
+    var catLabel = opt ? opt.textContent.replace(emoji, '').trim() : catId
     var dEl = row.querySelector('.exp-desc')
     if (dEl) dEl.textContent = descripcion
     var eEl = row.querySelector('.exp-emoji')
@@ -285,7 +324,9 @@
   // descripción/categoría y, si cambia algo, lo aplicamos sin recargar y avisamos con
   // opción de Deshacer. Nunca molesta: si la IA falla/tarda, queda lo guardado.
   var corrigiendo = false
-  async function corregirEnFondo(id) {
+  // autoCat=true: la IA puede cambiar la categoría (modo "Automático").
+  // autoCat=false: categoría fija (modo manual): solo se pule la descripción.
+  async function corregirEnFondo(id, autoCat) {
     if (corrigiendo) return
     var row = document.querySelector('.exp-row[data-id="' + id + '"]')
     if (!row) return
@@ -307,7 +348,8 @@
       var data = await res.json()
       if (!data || !data.ok) return
       var nuevaDesc = (data.descripcion && data.descripcion.trim()) || origDesc
-      var nuevaCat = data.categoria || origCat
+      // En modo manual NO tocamos la categoría: la dejamos como la eligió la persona.
+      var nuevaCat = autoCat ? (data.categoria || origCat) : origCat
       if (nuevaDesc === origDesc && nuevaCat === origCat) return // nada que corregir
       if (!(await aplicarCorreccion(id, nuevaDesc, nuevaCat))) return
       actualizarFila(id, nuevaDesc, nuevaCat)
@@ -369,7 +411,9 @@
     if (monto) monto.value = row.getAttribute('data-monto') || ''
     selectMoneda(row.getAttribute('data-moneda'))
     selectPersona(row.getAttribute('data-nombre'))
-    selectChip(row.getAttribute('data-categoria') || OTROS_ID)
+    // Editar es SIEMPRE manual: sacamos "Automático" y mostramos la categoría actual.
+    setAutoOption(false)
+    setCategoria(row.getAttribute('data-categoria') || OTROS_ID)
     setFecha(row.getAttribute('data-fecha'))
     if (form) form.action = '/gastos/' + id + '/editar'
     if (sheetTitle) sheetTitle.textContent = 'Editar gasto'
@@ -388,9 +432,9 @@
 
     if (fab) fab.addEventListener('click', openNew)
 
-    if (catChips) catChips.addEventListener('click', function (e) {
-      var b = e.target.closest('.chip')
-      if (b) selectChip(b.getAttribute('data-cat'))
+    if (catSelect) catSelect.addEventListener('change', function () {
+      // Mantener el hidden sincronizado: en Automático va "Otros" como placeholder.
+      if (fCategoria) fCategoria.value = catSelect.value === CAT_AUTO ? OTROS_ID : catSelect.value
     })
     if (monedaToggle) monedaToggle.addEventListener('click', function (e) {
       var b = e.target.closest('.moneda-opt')
@@ -425,8 +469,13 @@
       // que, ya guardado y recargado, la IA revise typos/categoría "de fondo".
       var iaOn = form.getAttribute('data-ia') === 'true'
       if (!revisadoParaGuardar && iaOn && form.action.indexOf('/nuevo') !== -1) {
-        // Timestamp para que la marca no quede colgada si este guardado falla.
-        try { sessionStorage.setItem('ia-revisar-pending', String(Date.now())) } catch (_) {}
+        // Timestamp para que la marca no quede colgada si este guardado falla. Y
+        // guardamos si la categoría era Automática: solo entonces la IA puede
+        // cambiarla de fondo (en manual, la elección de la persona manda).
+        try {
+          sessionStorage.setItem('ia-revisar-pending', String(Date.now()))
+          sessionStorage.setItem('ia-auto-cat', categoriaEsAuto() ? '1' : '0')
+        } catch (_) {}
       }
       // No interceptamos: el gasto se guarda ya (y recarga).
     })
@@ -631,14 +680,18 @@
     // Carga manual nueva: revisamos typos/categoría "de fondo" sobre el gasto ya
     // guardado y, si hay cambios, avisamos con Deshacer (sin recargar).
     var pend = false
+    var autoCat = false
     try {
       var pt = sessionStorage.getItem('ia-revisar-pending')
       sessionStorage.removeItem('ia-revisar-pending')
+      autoCat = sessionStorage.getItem('ia-auto-cat') === '1'
+      sessionStorage.removeItem('ia-auto-cat')
       pend = !!pt && (Date.now() - Number(pt)) < 15000
     } catch (_) {}
     // Solo carga manual reciente: si el guardado vino de la voz (ia-save presente),
-    // no corregimos de fondo (la voz ya categorizó).
-    if (pend && fid && !save) corregirEnFondo(fid)
+    // no corregimos de fondo (la voz ya categorizó). autoCat decide si la IA puede
+    // cambiar la categoría (Automático) o solo pulir la descripción (manual).
+    if (pend && fid && !save) corregirEnFondo(fid, autoCat)
     // Limpiamos ?ok= de la URL para que un refresh no repita el toast.
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', '/inicio')
