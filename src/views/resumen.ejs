@@ -167,7 +167,8 @@
         <div class="res-total-amount"><%= totalMes %></div>
       </div>
 
-      <!-- ===== Cierre / ajuste de cuentas ===== -->
+      <!-- ===== Cierre / ajuste de cuentas (solo viendo los compartidos) ===== -->
+      <% if (tipo === 'compartidos') { %>
       <div class="chart-card cierre-card">
         <div class="cierre-head">
           <div class="chart-title">Ajuste de cuentas</div>
@@ -232,8 +233,10 @@
           <% } %>
         <% } %>
       </div>
+      <% } %>
 
-      <% if (personasTotales.length > 0) { %>
+      <%# Total por persona: no tiene sentido en "Mis gastos" (ya son solo míos). %>
+      <% if (personasTotales.length > 0 && tipo !== 'personales') { %>
         <div class="chart-card">
           <div class="chart-title">Total por persona</div>
           <% personasTotales.forEach(function (p) { %>
