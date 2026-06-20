@@ -1,6 +1,7 @@
 // CSS completo de la app (mismo del diseño original): garantiza paridad visual
 // exacta. Las clases se aplican idénticas en los componentes React.
 import './legacy.css'
+import Providers from './providers.jsx'
 
 export const metadata = {
   title: 'Gastos',
@@ -29,7 +30,9 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }
