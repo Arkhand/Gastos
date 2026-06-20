@@ -75,12 +75,14 @@ export default function ResumenClient({ personaDefault }) {
   const movs = useMemo(() => gastosMes.map((g) => filaMovimiento(g, catLookup, hoy)), [gastosMes, catLookup, hoy])
 
   // ---- Gráficos (filtrados por tipo) ----
+  //  compartidos: los que entran al reparto · todos: sin filtro
+  //  personales ("Mis gastos"): TODOS los gastos a mi nombre (compartidos o no).
   const gastosGraf = useMemo(() => {
     return gastosMes.filter((g) =>
       tipo === 'todos'
         ? true
         : tipo === 'personales'
-        ? g.compartido === false && normalizarPersona(g.a_nombre_de) === personaDefault
+        ? normalizarPersona(g.a_nombre_de) === personaDefault
         : g.compartido !== false
     )
   }, [gastosMes, tipo, personaDefault])
