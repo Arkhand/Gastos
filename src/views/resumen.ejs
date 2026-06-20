@@ -28,10 +28,24 @@
     <!-- ===== Vista: Gastos ===== -->
     <div class="vista <%= vista === 'gastos' ? 'is-on' : '' %>" id="vista-gastos">
 
+      <!-- MOBILE: filtros (buscar + persona) sobre la lista agrupada por día -->
+      <% if (dbEnabled && grupos.length > 0) { %>
+      <div class="mvm-filters">
+        <input class="ctl mvm-q" id="mvm-q" type="text" placeholder="Buscar… ej: súper, taxi" autocomplete="off" />
+        <div class="seg mvm-per" id="mvm-per">
+          <button type="button" data-v="all" class="is-on">Todos</button>
+          <% personas.forEach(function (p) { %>
+            <button type="button" data-v="<%= p.id %>"><%= p.emoji %></button>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+
       <!-- MOBILE: lista editable con lápiz. En desktop se oculta, pero queda en el
            DOM para que el botón editar de la tabla reuse su lógica (app.js cablea
            estos lápices y la tabla simplemente los dispara). -->
       <div class="gastos-mobile">
+        <div class="mvm-empty recent-empty" id="mvm-empty" hidden>Sin movimientos con esos filtros 🔍</div>
         <% if (!dbEnabled) { %>
           <div class="recent-empty">Base de datos no configurada todavía.</div>
         <% } else if (grupos.length === 0) { %>
@@ -395,6 +409,52 @@
   })
 
   render()
+})()
+
+// ===== MOBILE: filtros (buscar + persona) sobre la lista agrupada por día =====
+(function () {
+  var cont = document.querySelector('.gastos-mobile')
+  var qEl = document.getElementById('mvm-q')
+  var perSeg = document.getElementById('mvm-per')
+  var empty = document.getElementById('mvm-empty')
+  if (!cont || (!qEl && !perSeg)) return
+
+  var state = { q: '', per: 'all' }
+
+  function aplicar() {
+    var q = state.q.toLowerCase()
+    var filtrando = q !== '' || state.per !== 'all'
+    var visibles = 0
+    // Mostrar/ocultar cada gasto según búsqueda + persona.
+    cont.querySelectorAll('.day-group').forEach(function (grupo) {
+      var enGrupo = 0
+      grupo.querySelectorAll('.exp-row').forEach(function (row) {
+        var desc = (row.getAttribute('data-descripcion') || '').toLowerCase()
+        var per = row.getAttribute('data-nombre') || ''
+        var ok = (state.per === 'all' || per === state.per) &&
+                 (q === '' || desc.indexOf(q) > -1)
+        row.style.display = ok ? '' : 'none'
+        if (ok) { enGrupo++; visibles++ }
+      })
+      // Ocultar el día entero si no quedó ningún gasto visible.
+      grupo.style.display = enGrupo ? '' : 'none'
+      // El total del día viene del backend (todos los gastos): al filtrar dejaría de
+      // ser cierto, así que lo escondemos mientras haya filtros activos.
+      var tot = grupo.querySelector('.day-total')
+      if (tot) tot.style.visibility = filtrando ? 'hidden' : ''
+    })
+    if (empty) empty.hidden = visibles > 0
+  }
+
+  if (qEl) qEl.addEventListener('input', function (e) { state.q = e.target.value; aplicar() })
+  if (perSeg) perSeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button')
+    if (!b) return
+    perSeg.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-on') })
+    b.classList.add('is-on')
+    state.per = b.getAttribute('data-v')
+    aplicar()
+  })
 })()
 </script>
 <% } %>

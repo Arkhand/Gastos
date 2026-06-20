@@ -729,7 +729,14 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 @media (min-width:900px) {
   .gastos-mobile { display:none; }
   .gastos-desktop { display:block; }
+  /* En desktop manda la tabla con sus filtros: los de mobile se ocultan. */
+  .mvm-filters { display:none; }
 }
+/* MOBILE: filtros (buscar + persona) sobre la lista por día */
+.mvm-filters { display:flex; gap:8px; margin-bottom:12px; }
+.mvm-q { flex:1; min-width:0; }
+.mvm-per { flex:0 0 auto; }
+.mvm-per button { padding:0 11px; }
 .mv-edit-cell { width:1%; white-space:nowrap; text-align:right; }
 .mv-edit { width:32px; height:32px; border:none; border-radius:10px; background:#f0e6d9; color:var(--coral-deep); font-size:14px; line-height:1; cursor:pointer; }
 .mv-edit:hover { background:#e9dcc9; }
