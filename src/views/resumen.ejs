@@ -3,15 +3,7 @@
 <%- include('partials/sidebar', { tab: 'stats' }) %>
 <div class="app-root page-resumen">
   <div class="resumen">
-    <div class="resumen-head">
-      <h1>Resumen <% if (cierre.cerrado && tipo === 'compartidos') { %><span class="mes-cerrado-flag" title="Mes cerrado">🤝</span><% } %></h1>
-      <%# Toggle de tipo: filtra TODO el resumen (lista, tabla, gráficos). Default
-          compartidos. Navega con ?tipo= para que el backend recalcule todo. %>
-      <div class="segmented tipo-seg" id="tipo-seg">
-        <button type="button" class="seg-opt <%= tipo === 'compartidos' ? 'is-on' : '' %>" data-tipo="compartidos">🤝 Compartidos</button>
-        <button type="button" class="seg-opt <%= tipo === 'todos' ? 'is-on' : '' %>" data-tipo="todos">Todos</button>
-      </div>
-    </div>
+    <h1>Resumen <% if (cierre.cerrado) { %><span class="mes-cerrado-flag" title="Mes cerrado">🤝</span><% } %></h1>
 
     <% if (ok === 'cerrado') { %>
       <div class="cfg-alert cfg-alert-ok">Mes cerrado 🤝 — la división quedó congelada.</div>
@@ -167,8 +159,7 @@
         <div class="res-total-amount"><%= totalMes %></div>
       </div>
 
-      <!-- ===== Cierre / ajuste de cuentas (solo viendo los compartidos) ===== -->
-      <% if (cierre.aplica) { %>
+      <!-- ===== Cierre / ajuste de cuentas ===== -->
       <div class="chart-card cierre-card">
         <div class="cierre-head">
           <div class="chart-title">Ajuste de cuentas</div>
@@ -233,7 +224,6 @@
           <% } %>
         <% } %>
       </div>
-      <% } %>
 
       <% if (personasTotales.length > 0) { %>
         <div class="chart-card">

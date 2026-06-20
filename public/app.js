@@ -790,40 +790,13 @@
     })
   }
 
-  // Query actual del Resumen (vista + tipo) para no perderlos al navegar.
-  function resumenParams() {
-    var p = { vista: 'gastos', tipo: 'compartidos' }
-    try {
-      var s = new URL(window.location.href).searchParams
-      p.vista = s.get('vista') || 'gastos'
-      p.tipo = s.get('tipo') || 'compartidos'
-    } catch (_) {}
-    return p
-  }
-
   // ============ Resumen: selector de mes (solo meses con datos) ============
   var mesSelect = document.getElementById('mes-select')
   if (mesSelect) {
     mesSelect.addEventListener('change', function () {
-      var p = resumenParams()
-      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) +
-        '&vista=' + p.vista + '&tipo=' + p.tipo
-    })
-  }
-
-  // ============ Resumen: toggle de tipo (Compartidos / Personales / Todos) ============
-  // Recarga la vista con ?tipo= para que el backend recalcule lista, tabla y gráficos.
-  var tipoSeg = document.getElementById('tipo-seg')
-  if (tipoSeg) {
-    tipoSeg.addEventListener('click', function (e) {
-      var b = e.target.closest('.seg-opt')
-      if (!b) return
-      var t = b.getAttribute('data-tipo')
-      var p = resumenParams()
-      var mes = ''
-      try { mes = new URL(window.location.href).searchParams.get('mes') || '' } catch (_) {}
-      window.location.href = '/resumen?' + (mes ? 'mes=' + encodeURIComponent(mes) + '&' : '') +
-        'vista=' + p.vista + '&tipo=' + t
+      var vista = 'gastos'
+      try { vista = new URL(window.location.href).searchParams.get('vista') || 'gastos' } catch (_) {}
+      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) + '&vista=' + vista
     })
   }
 })()
