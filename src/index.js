@@ -9,12 +9,14 @@ import { paginasRouter } from './routes/paginas.js'
 import { gastosRouter } from './routes/gastos.js'
 import { errorHandler } from './middlewares/errorHandler.js'
 import { ensureCategoriasCargadas, cssVarsCategorias } from './config/categorias.js'
+import { ensureDivisionCargada } from './config/division.js'
 
 const app = express()
 
-// Precargamos las categorías en cache al arrancar (best-effort: si la DB no está
-// o falla, queda el SEED y la app no se cuelga).
+// Precargamos categorías y división en cache al arrancar (best-effort: si la DB no
+// está o falla, queda el fallback y la app no se cuelga).
 ensureCategoriasCargadas().catch(() => {})
+ensureDivisionCargada().catch(() => {})
 
 // Vercel corre detrás de un proxy. Necesario para detectar https/host real
 // (lo usa la callbackURL relativa de Google) y para setear bien la cookie `secure`.

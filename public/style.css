@@ -152,6 +152,24 @@ body.sheet-open .sheet { transform:translateX(-50%) translateY(0); }
 .moneda-toggle { display:flex; border:2px solid #ece1d4; border-radius:16px; overflow:hidden; background:#fff; }
 .moneda-opt { padding:0 14px; display:flex; align-items:center; font-family:var(--font-d); font-weight:600; font-size:14px; color:var(--ink-soft); background:none; border:none; }
 .moneda-opt.is-on { background:var(--coral); color:#fff; }
+
+/* Header de la hoja: título a la izquierda + switch "Personal" a la derecha */
+.sheet-head-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+
+/* Switch "Personal": control deslizante (el checkbox real va oculto debajo).
+   Orden en el DOM: texto, input (oculto), track con perilla. */
+.personal-switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+.personal-switch input { position:absolute; opacity:0; width:0; height:0; }
+.personal-switch-track { position:relative; width:40px; height:24px; border-radius:999px; background:#fff; border:2px solid #ece1d4; transition:border-color .18s ease, background .18s ease; flex:0 0 auto; }
+.personal-switch-knob { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--coral); transition:transform .18s ease, background .18s ease; }
+.personal-switch input:checked + .personal-switch-track { border-color:var(--coral); background:#fff3ec; }
+.personal-switch input:checked + .personal-switch-track .personal-switch-knob { transform:translateX(16px); background:var(--coral-deep); }
+.personal-switch input:focus-visible + .personal-switch-track { box-shadow:0 0 0 3px rgba(242,137,95,.35); }
+.personal-switch-txt { font-family:var(--font-d); font-weight:600; font-size:13px; color:var(--ink-soft); }
+.personal-switch input:checked ~ .personal-switch-txt { color:var(--coral-deep); }
+
+/* Selector de persona deshabilitado (cuando el gasto es personal) */
+.segmented.is-disabled { opacity:.45; pointer-events:none; }
 .chips { display:flex; flex-wrap:wrap; gap:8px; }
 .chip {
   display:flex; align-items:center; gap:6px; border:2px solid #ece1d4; background:#fff;
@@ -716,3 +734,49 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .mv-edit { width:32px; height:32px; border:none; border-radius:10px; background:#f0e6d9; color:var(--coral-deep); font-size:14px; line-height:1; cursor:pointer; }
 .mv-edit:hover { background:#e9dcc9; }
 .mv-edit:active { transform:scale(.92); }
+
+/* ===== Configuración: índice (menú) y pantallas ===== */
+/* Link "‹ Configuración" para volver al índice desde una pantalla */
+.cfg-back { display:inline-block; margin:0 0 6px; font-family:var(--font-d); font-weight:600; font-size:14px; color:var(--ink-soft); text-decoration:none; }
+.cfg-back:hover { color:var(--coral-deep); }
+
+/* Índice: lista de opciones que navegan a su pantalla */
+.cfg-menu { display:flex; flex-direction:column; gap:12px; margin-top:8px; }
+.cfg-menu-item { display:flex; align-items:center; gap:14px; background:#fff; border:2px solid #ece1d4; border-radius:18px; padding:16px; text-decoration:none; color:var(--ink); }
+.cfg-menu-item:hover { border-color:var(--coral); }
+.cfg-menu-item:active { transform:scale(.99); }
+.cfg-menu-ico { font-size:24px; line-height:1; flex:0 0 auto; }
+.cfg-menu-txt { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.cfg-menu-name { font-family:var(--font-d); font-weight:600; font-size:16px; }
+.cfg-menu-sub { font-size:13px; color:var(--ink-soft); }
+.cfg-menu-arrow { font-size:24px; color:var(--ink-soft); flex:0 0 auto; }
+
+/* División: una fila por integrante con su % */
+.cfg-division { display:flex; flex-direction:column; gap:12px; }
+.cfg-div-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.cfg-div-inp { display:flex; align-items:center; gap:4px; background:#fff; border:2px solid #ece1d4; border-radius:14px; padding:0 12px; }
+.cfg-div-inp:focus-within { border-color:var(--coral); }
+.cfg-div-inp .inp { border:none; background:transparent; width:70px; text-align:right; font-size:18px; font-weight:600; font-family:var(--font-d); color:var(--ink); outline:none; padding:8px 0; }
+.cfg-div-sign { font-family:var(--font-d); font-weight:600; color:var(--ink-soft); }
+.cfg-div-suma { font-family:var(--font-d); font-size:14px; color:var(--ink-soft); }
+.cfg-div-suma.cfg-div-ok #cfg-div-total, .cfg-div-suma.cfg-div-ok { color:#2f7d46; }
+.cfg-div-suma.cfg-div-bad, .cfg-div-suma.cfg-div-bad #cfg-div-total { color:var(--coral-deep); }
+
+/* ===== Cierre / ajuste de cuentas (Resumen) ===== */
+.mes-cerrado-flag { font-size:.8em; }
+.cierre-card { }
+.cierre-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.cierre-badge { font-family:var(--font-d); font-weight:600; font-size:13px; color:#2f7d46; background:#cdeccf; border-radius:12px; padding:4px 10px; white-space:nowrap; }
+.cierre-sub { font-family:var(--font-d); font-size:14px; color:var(--ink-soft); margin:6px 0 12px; }
+.cierre-sub .cierre-note { display:block; font-size:12px; opacity:.8; }
+.cierre-pct { font-size:12px; color:var(--ink-soft); font-weight:500; }
+/* Saldo del ajuste de cuentas: deudor arriba, montos (ARS/USD) en el medio, acreedor abajo */
+.saldo-row { background:#fff7f2; border:2px solid #ffe0d3; border-radius:14px; padding:12px 14px; margin-bottom:8px; text-align:center; }
+.saldo-deudor { font-family:var(--font-n); font-size:15px; color:var(--ink); }
+.saldo-montos { font-family:var(--font-d); font-size:22px; line-height:1.3; margin:2px 0; }
+.saldo-monto { color:var(--coral-deep); white-space:nowrap; }
+.saldo-acreedor { font-family:var(--font-n); font-size:15px; color:var(--ink); }
+.saldo-quits { font-family:var(--font-d); font-weight:600; font-size:15px; color:#2f7d46; background:#eef8ef; border-color:#cdeccf; text-align:left; }
+.cierre-foot { font-family:var(--font-d); font-size:12px; color:var(--ink-soft); margin:12px 0 8px; }
+.cierre-btn { width:100%; }
+.cierre-form { margin-top:4px; }

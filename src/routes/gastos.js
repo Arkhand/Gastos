@@ -8,15 +8,19 @@ import {
   corregir,
   eliminar,
   resumen,
+  cerrarMes,
   nosotros,
 } from '../controllers/gastosController.js'
 import { interpretar, revisar } from '../controllers/iaController.js'
 import {
-  config,
+  configMenu,
+  configDivision,
+  configCategorias,
   crearCat,
   editarCat,
   eliminarCat,
   revivirCat,
+  guardarDivisionCfg,
 } from '../controllers/configController.js'
 
 export const gastosRouter = Router()
@@ -25,13 +29,23 @@ export const gastosRouter = Router()
 gastosRouter.get('/inicio', requireAuth, home)
 gastosRouter.get('/resumen', requireAuth, resumen)
 gastosRouter.get('/nosotros', requireAuth, nosotros)
-gastosRouter.get('/config', requireAuth, config)
+
+// Configuración: índice + pantallas propias (cada una con su URL y "Volver")
+gastosRouter.get('/config', requireAuth, configMenu)
+gastosRouter.get('/config/division', requireAuth, configDivision)
+gastosRouter.get('/config/categorias', requireAuth, configCategorias)
 
 // Configuración de categorías (alta/edición/baja/restaurar). POST + redirect.
 gastosRouter.post('/config/categorias', requireAuth, crearCat)
 gastosRouter.post('/config/categorias/:id/editar', requireAuth, editarCat)
 gastosRouter.post('/config/categorias/:id/eliminar', requireAuth, eliminarCat)
 gastosRouter.post('/config/categorias/:id/revivir', requireAuth, revivirCat)
+
+// Configuración de la división (% por integrante). POST + redirect.
+gastosRouter.post('/config/division', requireAuth, guardarDivisionCfg)
+
+// Cierre de mes (ajuste de cuentas): congela el % y marca el mes. POST + redirect.
+gastosRouter.post('/resumen/cerrar', requireAuth, cerrarMes)
 
 // Acciones del gasto (la hoja inferior postea acá)
 gastosRouter.post('/nuevo', requireAuth, crear)

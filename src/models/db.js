@@ -79,6 +79,7 @@ export async function crearGasto(userId, cargadoPor, gasto) {
       monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
+      compartido: gasto.compartido ?? true,
     })
     .select()
     .single()
@@ -110,6 +111,7 @@ export async function actualizarGasto(_userId, id, gasto) {
       monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
+      compartido: gasto.compartido ?? anterior.compartido ?? true,
     })
     .select()
     .single()
@@ -207,4 +209,54 @@ export async function contarGastosDeCategoria(id) {
     .eq('eliminado', false)
   if (error) throw error
   return count ?? 0
+}
+
+// ===== División (config global de %) =====
+// Tabla `division`: una fila por integrante (clave = email canónico). Define qué
+// porcentaje del total compartido le toca a cada uno. La cache (config/division.js)
+// la consume y mantiene helpers síncronos, igual que las categorías.
+
+// Trae el % de cada integrante.
+export async function listarDivision() {
+  const { data, error } = await getClient().from('division').select('*')
+  if (error) throw error
+  return data ?? []
+}
+
+// Upsert del % de un integrante (alta o edición por email).
+export async function guardarDivision(persona, porcentaje) {
+  const { error } = await getClient()
+    .from('division')
+    .upsert({ persona, porcentaje, updated_at: new Date().toISOString() })
+  if (error) throw error
+}
+
+// ===== Cierres (foto congelada por mes) =====
+// Tabla `cierres`: una fila por mes cerrado (clave = 'YYYY-MM'). Guarda la foto del
+// % acordado en `division` (jsonb { email: pct }). Si existe la fila, el mes está
+// cerrado (🤝): el reparto usa esa foto y no el % global vigente.
+
+// Trae todos los cierres (para marcar qué meses están cerrados en el selector).
+export async function listarCierres() {
+  const { data, error } = await getClient().from('cierres').select('*')
+  if (error) throw error
+  return data ?? []
+}
+
+// Trae el cierre de un mes (o null si está abierto).
+export async function obtenerCierre(mes) {
+  const { data, error } = await getClient().from('cierres').select('*').eq('mes', mes).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Cierra un mes: congela la foto del % y quién lo cerró. Definitivo (no se reabre).
+export async function crearCierre(mes, division, cerradoPor) {
+  const { data, error } = await getClient()
+    .from('cierres')
+    .insert({ mes, division, cerrado_por: cerradoPor ?? null })
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

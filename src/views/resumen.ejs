@@ -3,13 +3,18 @@
 <%- include('partials/sidebar', { tab: 'stats' }) %>
 <div class="app-root page-resumen">
   <div class="resumen">
-    <h1>Resumen</h1>
+    <h1>Resumen <% if (cierre.cerrado) { %><span class="mes-cerrado-flag" title="Mes cerrado">🤝</span><% } %></h1>
 
-    <!-- Selector de mes: solo meses con datos cargados, de mayor a menor -->
+    <% if (ok === 'cerrado') { %>
+      <div class="cfg-alert cfg-alert-ok">Mes cerrado 🤝 — la división quedó congelada.</div>
+    <% } %>
+
+    <!-- Selector de mes: solo meses con datos cargados, de mayor a menor. Los meses
+         cerrados llevan 🤝 -->
     <div class="mes-nav">
       <select class="mes-select" id="mes-select" aria-label="Elegir mes">
         <% meses.forEach(function (m) { %>
-          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.label %></option>
+          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.cerrado ? '🤝 ' : '' %><%= m.label %></option>
         <% }) %>
       </select>
     </div>
@@ -137,6 +142,72 @@
       <div class="res-total">
         <div class="res-total-label">Total del mes (ARS)</div>
         <div class="res-total-amount"><%= totalMes %></div>
+      </div>
+
+      <!-- ===== Cierre / ajuste de cuentas ===== -->
+      <div class="chart-card cierre-card">
+        <div class="cierre-head">
+          <div class="chart-title">Ajuste de cuentas</div>
+          <% if (cierre.cerrado) { %>
+            <span class="cierre-badge">🤝 Mes cerrado</span>
+          <% } %>
+        </div>
+
+        <% if (!cierre.hayCompartidos) { %>
+          <div class="recent-empty">No hay gastos compartidos en este mes.</div>
+        <% } else { %>
+          <p class="cierre-sub">
+            Total compartido: <strong><%= cierre.totalArsStr %></strong>
+            <% if (cierre.totalUsdStr !== '$ 0') { %> · <strong><%= cierre.totalUsdStr %></strong><% } %>
+            <span class="cierre-note">
+              División
+              <% cierre.pctPorPersona.forEach(function (p, i) { %><%= i ? ' / ' : '' %><%= p.emoji %> <%= p.pct %>%<% }) %>
+              · los gastos personales no entran
+            </span>
+          </p>
+
+          <%# Saldo agrupado por deudor: el deudor y el acreedor se nombran una sola
+              vez, y los montos (ARS y/o USD) se listan juntos en el medio. Normalmente
+              hay un único deudor; agrupamos por si en cada moneda debe una persona
+              distinta (caso raro). "debe" en vivo / "pagó" si el mes está cerrado. %>
+          <%
+            var grupos = {}
+            ;[cierre.saldoArs, cierre.saldoUsd].forEach(function (s) {
+              if (!s) return
+              var k = s.deudor.label
+              if (!grupos[k]) grupos[k] = { deudor: s.deudor, acreedor: s.acreedor, montos: [] }
+              grupos[k].montos.push(s.montoStr)
+            })
+            var llaves = Object.keys(grupos)
+          %>
+
+          <% if (llaves.length === 0) { %>
+            <div class="saldo-row saldo-quits">✅ Están a mano: nadie le debe nada al otro.</div>
+          <% } else { %>
+            <% llaves.forEach(function (k) { var g = grupos[k] %>
+              <div class="saldo-row">
+                <div class="saldo-deudor"><strong><%= g.deudor.emoji %> <%= g.deudor.label %></strong> <%= cierre.cerrado ? 'pagó:' : 'debe:' %></div>
+                <div class="saldo-montos">
+                  <% g.montos.forEach(function (m, i) { %><%= i ? ' · ' : '' %><strong class="saldo-monto"><%= m %></strong><% }) %>
+                </div>
+                <div class="saldo-acreedor">a <strong><%= g.acreedor.emoji %> <%= g.acreedor.label %></strong></div>
+              </div>
+            <% }) %>
+          <% } %>
+
+          <% if (cierre.cerrado) { %>
+            <p class="cierre-foot">🤝 Cuentas cerradas<% if (cierre.cerradoPor) { %> · por <%= cierre.cerradoPor %><% } %>.</p>
+          <% } else if (cierre.esPasado) { %>
+            <form class="cierre-form" method="post" action="/resumen/cerrar"
+                  onsubmit="return confirm('¿Cerrar este mes? El saldo queda congelado y no se puede reabrir.')">
+              <input type="hidden" name="mes" value="<%= mes %>" />
+              <p class="cierre-foot">Saldo en vivo con la división actual. Al cerrar, queda congelado para este mes.</p>
+              <button type="submit" class="btn-save cierre-btn">Cerrar mes 🤝</button>
+            </form>
+          <% } else { %>
+            <p class="cierre-foot">Saldo en vivo con la división actual. El mes en curso se puede cerrar cuando termine.</p>
+          <% } %>
+        <% } %>
       </div>
 
       <% if (personasTotales.length > 0) { %>

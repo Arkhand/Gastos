@@ -9,7 +9,8 @@
   data-moneda="<%= g.moneda %>"
   data-nombre="<%= g.a_nombre_de || '' %>"
   data-categoria="<%= c.id %>"
-  data-fecha="<%= g.fecha || '' %>">
+  data-fecha="<%= g.fecha || '' %>"
+  data-compartido="<%= g.compartido === false ? 'false' : 'true' %>">
   <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
   <span class="exp-mid">
     <span class="exp-desc"><%= g.descripcion %></span>
