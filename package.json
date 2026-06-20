@@ -1,14 +1,13 @@
 {
   "name": "gastos",
   "version": "2.0.0",
-  "description": "App de gastos en Next.js sobre Vercel, con login de Google y Supabase. (Migración desde Express+EJS.)",
+  "description": "App de gastos en Next.js sobre Vercel, con login de Google y Supabase.",
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "watch:express": "vercel dev --listen 3000"
+    "lint": "next lint"
   },
   "keywords": [],
   "author": "",
@@ -22,13 +21,5 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1"
-  },
-  "devDependencies": {
-    "cookie-session": "^2.1.0",
-    "ejs": "^6.0.1",
-    "express": "^4.18.2",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "ws": "^8.21.0"
   }
 }

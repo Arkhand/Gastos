@@ -2,6 +2,7 @@
 // exacta. Las clases se aplican idénticas en los componentes React.
 import './legacy.css'
 import Providers from './providers.jsx'
+import RegisterSW from '../components/RegisterSW.jsx'
 
 export const metadata = {
   title: 'Gastos',
@@ -32,6 +33,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Providers>{children}</Providers>
+        <RegisterSW />
       </body>
     </html>
   )
