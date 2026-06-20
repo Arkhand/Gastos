@@ -1,4 +1,6 @@
-import './globals.css'
+// CSS completo de la app (mismo del diseño original): garantiza paridad visual
+// exacta. Las clases se aplican idénticas en los componentes React.
+import './legacy.css'
 
 export const metadata = {
   title: 'Gastos',
