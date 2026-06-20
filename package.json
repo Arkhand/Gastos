@@ -1,16 +1,28 @@
 {
   "name": "gastos",
-  "version": "1.0.0",
-  "description": "App de gastos en Express sobre Vercel, con login de Google (Passport) y Supabase.",
+  "version": "2.0.0",
+  "description": "App de gastos en Next.js sobre Vercel, con login de Google y Supabase. (Migración desde Express+EJS.)",
   "type": "module",
   "scripts": {
-    "watch": "vercel dev --listen 3000"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "watch:express": "vercel dev --listen 3000"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "@tanstack/react-query": "^5.59.0",
+    "google-auth-library": "^9.14.0",
+    "iron-session": "^8.0.3",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
     "cookie-session": "^2.1.0",
     "ejs": "^6.0.1",
     "express": "^4.18.2",

@@ -1,0 +1,47 @@
+/* =========================================================
+   Gastos — estilos globales (paleta + reset). El resto de los
+   estilos vive en CSS Modules por componente.
+   Migrado del diseño "chibi" (public/style.css de la app Express).
+   ========================================================= */
+:root {
+  --cream:#fbf3ea; --card:#fffdfa;
+  --ink:#42352c; --ink-soft:#9a8a7c;
+  --coral:#f2895f; --coral-deep:#e0683c;
+  --mint:#bfe6c8; --mint-deep:#5aa874;
+  --lilac:#dcc9f2; --lilac-deep:#9a72d0;
+  --butter:#ffe3a3; --butter-deep:#d9a93a;
+  --blush:#f6c2cf; --blush-deep:#d36f8c;
+  --c-comida:#ffd9cf; --c-comida-ink:#c0492f;
+  --c-super:#cdeccf; --c-super-ink:#2f7d46;
+  --c-transporte:#ffe6b3; --c-transporte-ink:#9a6a16;
+  --c-salidas:#e6d6f7; --c-salidas-ink:#6a3fa0;
+  --c-salud:#ffd6e2; --c-salud-ink:#b23a63;
+  --c-hogar:#cfe6f7; --c-hogar-ink:#2f6a9a;
+  --c-servicios:#cdeef0; --c-servicios-ink:#1f7d86;
+  --c-otros:#e3e0ea; --c-otros-ink:#5a5570;
+  --font-d:'Fredoka', system-ui, sans-serif;
+  --font-b:'Nunito', system-ui, sans-serif;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; padding:0; }
+body {
+  background:#efe7dd;
+  background-image:radial-gradient(circle at 20% 10%, #f5ede2, #e7ded2 70%);
+  font-family:var(--font-b);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+button { font-family:inherit; cursor:pointer; }
+a { color:inherit; }
+
+/* Color por categoría (SEED). Las categorías nuevas (UUID) inyectan sus vars
+   dinámicamente vía un <style> generado en runtime (equivalente a cssVarsCategorias). */
+.cat-comida     { --bg:var(--c-comida);     --ink:var(--c-comida-ink); }
+.cat-super      { --bg:var(--c-super);      --ink:var(--c-super-ink); }
+.cat-transporte { --bg:var(--c-transporte); --ink:var(--c-transporte-ink); }
+.cat-salidas    { --bg:var(--c-salidas);    --ink:var(--c-salidas-ink); }
+.cat-salud      { --bg:var(--c-salud);      --ink:var(--c-salud-ink); }
+.cat-hogar      { --bg:var(--c-hogar);      --ink:var(--c-hogar-ink); }
+.cat-servicios  { --bg:var(--c-servicios);  --ink:var(--c-servicios-ink); }
+.cat-otros      { --bg:var(--c-otros);      --ink:var(--c-otros-ink); }
