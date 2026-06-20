@@ -24,6 +24,8 @@
   var fMoneda = document.getElementById('f-moneda')
   var moneySign = document.getElementById('money-sign')
   var monedaToggle = document.getElementById('moneda-toggle')
+  var fCompartido = document.getElementById('f-compartido')
+  var personalChk = document.getElementById('f-personal')
   var fCategoria = document.getElementById('f-categoria')
   var catSelect = document.getElementById('cat-select')
   var catSelectWrap = catSelect ? catSelect.closest('.cat-select-wrap') : null
@@ -220,6 +222,24 @@
     }
   }
 
+  // Compartido (entra al reparto) vs Personal. Acepta booleano o string.
+  // Compartido (default) vs Personal. Acepta booleano o string ('false' = personal).
+  // Personal: el gasto pasa a nombre del usuario logueado y el selector de persona
+  // queda deshabilitado (no entra al reparto).
+  function selectCompartido(v) {
+    var comp = String(v) !== 'false'
+    if (fCompartido) fCompartido.value = comp ? 'true' : 'false'
+    if (personalChk) personalChk.checked = !comp
+    // Al pasar a personal, forzamos la persona al usuario logueado.
+    if (!comp) selectPersona(personaDefault)
+    // Habilitar/deshabilitar el selector de persona según el modo.
+    if (personaSeg) {
+      personaSeg.classList.toggle('is-disabled', !comp)
+      var opts = personaSeg.querySelectorAll('.seg-opt')
+      for (var i = 0; i < opts.length; i++) opts[i].disabled = !comp
+    }
+  }
+
   function selectPersona(p) {
     // Validamos contra las opciones presentes (los data-persona son emails).
     var val = ''
@@ -259,8 +279,12 @@
   function resetForm() {
     if (desc) desc.value = ''
     if (monto) monto.value = ''
+    // Por defecto, alta nueva: sin id de edición. openEdit lo completa si corresponde.
+    var fEditId = document.getElementById('f-edit-id')
+    if (fEditId) fEditId.value = ''
     selectMoneda('ARS')
     selectPersona(personaDefault)
+    selectCompartido(true) // por defecto compartido
     // Por defecto, categoría Automática (la elige la IA). En edición se cambia a
     // manual más abajo. Si la IA está apagada, no ofrecemos "Automático" (no habría
     // quién clasifique): arranca en "Otros".
@@ -281,6 +305,8 @@
     // no, queda en Automático para que la IA la complete al guardar.
     setCategoria(g.categoria || (autoDisponible() ? CAT_AUTO : OTROS_ID))
     setFecha(g.fecha)
+    // La carga por voz es siempre compartida (no se decide por voz).
+    selectCompartido(true)
   }
 
   // Pulido local instantáneo (sin IA): recorta espacios y capitaliza la inicial.
@@ -415,7 +441,20 @@
     setAutoOption(false)
     setCategoria(row.getAttribute('data-categoria') || OTROS_ID)
     setFecha(row.getAttribute('data-fecha'))
-    if (form) form.action = '/gastos/' + id + '/editar'
+    selectCompartido(row.getAttribute('data-compartido'))
+    // Identificar el gasto por su UUID en el form (no por el action): el form sigue
+    // posteando a /nuevo y el backend edita porque viene edit_id. Así un fallo de JS
+    // no puede crear un duplicado en vez de editar.
+    var fEditId = document.getElementById('f-edit-id')
+    if (fEditId) fEditId.value = id
+    // Preservar la vista actual de Resumen (mes, vista, …): el redirect tras
+    // editar/borrar vuelve a la misma query en vez de saltar al mes actual.
+    var volver = (location.search || '').replace(/^\?/, '')
+    var fVolver = document.getElementById('f-volver')
+    var fVolverDel = document.getElementById('f-volver-del')
+    if (fVolver) fVolver.value = volver
+    if (fVolverDel) fVolverDel.value = volver
+    if (form) form.action = '/nuevo'
     if (sheetTitle) sheetTitle.textContent = 'Editar gasto'
     if (saveBtn) saveBtn.textContent = 'Guardar edición'
     if (heard) heard.textContent = ''
@@ -440,9 +479,13 @@
       var b = e.target.closest('.moneda-opt')
       if (b) selectMoneda(b.getAttribute('data-moneda'))
     })
+    // Switch Personal: marcado = personal (no compartido).
+    if (personalChk) personalChk.addEventListener('change', function () {
+      selectCompartido(personalChk.checked ? 'false' : 'true')
+    })
     if (personaSeg) personaSeg.addEventListener('click', function (e) {
       var b = e.target.closest('.seg-opt')
-      if (b) selectPersona(b.getAttribute('data-persona'))
+      if (b && !b.disabled) selectPersona(b.getAttribute('data-persona'))
     })
     if (datePills) datePills.addEventListener('click', function (e) {
       var b = e.target.closest('.date-pill')
@@ -458,6 +501,13 @@
     // Validación al guardar: descripción, monto y persona son obligatorios.
     // Si falta algo, no enviamos y mostramos un warning (en vez del popup nativo).
     if (form) form.addEventListener('submit', function (e) {
+      // Anti doble-submit: si ya estamos guardando (este submit, o el de la voz),
+      // ignoramos clicks/Enter posteriores. Evita crear duplicados mientras la
+      // página recarga. El backend además es idempotente como red de seguridad.
+      if (guardando) {
+        e.preventDefault()
+        return
+      }
       var faltan = camposFaltantes()
       if (faltan.length) {
         e.preventDefault()
@@ -465,10 +515,20 @@
         focoEn(faltan[0])
         return
       }
+      // A partir de acá el form SE VA A enviar: bloqueamos reenvíos y deshabilitamos
+      // el botón (se rehabilita solo al recargar la página tras el redirect).
+      guardando = true
+      if (saveBtn) {
+        saveBtn.disabled = true
+        saveBtn.classList.add('is-saving')
+      }
       // Carga manual NUEVA con IA activa (no voz, no edición): dejamos una marca para
-      // que, ya guardado y recargado, la IA revise typos/categoría "de fondo".
+      // que, ya guardado y recargado, la IA revise typos/categoría "de fondo". La
+      // edición se distingue por el hidden edit_id (el action es /nuevo en ambos).
+      var fEditId = document.getElementById('f-edit-id')
+      var esEdicion = !!(fEditId && fEditId.value)
       var iaOn = form.getAttribute('data-ia') === 'true'
-      if (!revisadoParaGuardar && iaOn && form.action.indexOf('/nuevo') !== -1) {
+      if (!revisadoParaGuardar && iaOn && !esEdicion && form.action.indexOf('/nuevo') !== -1) {
         // Timestamp para que la marca no quede colgada si este guardado falla. Y
         // guardamos si la categoría era Automática: solo entonces la IA puede
         // cambiarla de fondo (en manual, la elección de la persona manda).
@@ -730,13 +790,32 @@
     })
   }
 
+  // Lee un query param del Resumen con un default (vista, tipo, …).
+  function resumenParam(name, def) {
+    try { return new URL(window.location.href).searchParams.get(name) || def } catch (_) { return def }
+  }
+
   // ============ Resumen: selector de mes (solo meses con datos) ============
   var mesSelect = document.getElementById('mes-select')
   if (mesSelect) {
     mesSelect.addEventListener('change', function () {
-      var vista = 'gastos'
-      try { vista = new URL(window.location.href).searchParams.get('vista') || 'gastos' } catch (_) {}
-      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) + '&vista=' + vista
+      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) +
+        '&vista=' + resumenParam('vista', 'gastos') + '&tipo=' + resumenParam('tipo', 'compartidos')
+    })
+  }
+
+  // ============ Resumen: toggle de tipo de los GRÁFICOS ============
+  // Recarga con ?tipo= (el backend recalcula torta/ranking/totales). Se queda en
+  // la vista Gráficos, que es donde vive el toggle.
+  var tipoSeg = document.getElementById('tipo-seg')
+  if (tipoSeg) {
+    tipoSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-opt')
+      if (!b) return
+      var t = b.getAttribute('data-tipo')
+      var mes = resumenParam('mes', '')
+      window.location.href = '/resumen?' + (mes ? 'mes=' + encodeURIComponent(mes) + '&' : '') +
+        'vista=graficos&tipo=' + t
     })
   }
 })()

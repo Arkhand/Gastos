@@ -3,13 +3,18 @@
 <%- include('partials/sidebar', { tab: 'stats' }) %>
 <div class="app-root page-resumen">
   <div class="resumen">
-    <h1>Resumen</h1>
+    <h1>Resumen <% if (cierre.cerrado) { %><span class="mes-cerrado-flag" title="Mes cerrado">🤝</span><% } %></h1>
 
-    <!-- Selector de mes: solo meses con datos cargados, de mayor a menor -->
+    <% if (ok === 'cerrado') { %>
+      <div class="cfg-alert cfg-alert-ok">Mes cerrado 🤝 — la división quedó congelada.</div>
+    <% } %>
+
+    <!-- Selector de mes: solo meses con datos cargados, de mayor a menor. Los meses
+         cerrados llevan 🤝 -->
     <div class="mes-nav">
       <select class="mes-select" id="mes-select" aria-label="Elegir mes">
         <% meses.forEach(function (m) { %>
-          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.label %></option>
+          <option value="<%= m.value %>" <%= m.value === mes ? 'selected' : '' %>><%= m.cerrado ? '🤝 ' : '' %><%= m.label %></option>
         <% }) %>
       </select>
     </div>
@@ -23,10 +28,24 @@
     <!-- ===== Vista: Gastos ===== -->
     <div class="vista <%= vista === 'gastos' ? 'is-on' : '' %>" id="vista-gastos">
 
+      <!-- MOBILE: filtros (buscar + persona) sobre la lista agrupada por día -->
+      <% if (dbEnabled && grupos.length > 0) { %>
+      <div class="mvm-filters">
+        <input class="ctl mvm-q" id="mvm-q" type="text" placeholder="Buscar… ej: súper, taxi, 5000" autocomplete="off" />
+        <div class="seg mvm-per" id="mvm-per">
+          <button type="button" data-v="all" class="is-on">Todos</button>
+          <% personas.forEach(function (p) { %>
+            <button type="button" data-v="<%= p.id %>"><%= p.emoji %></button>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+
       <!-- MOBILE: lista editable con lápiz. En desktop se oculta, pero queda en el
            DOM para que el botón editar de la tabla reuse su lógica (app.js cablea
            estos lápices y la tabla simplemente los dispara). -->
       <div class="gastos-mobile">
+        <div class="mvm-empty recent-empty" id="mvm-empty" hidden>Sin movimientos con esos filtros 🔍</div>
         <% if (!dbEnabled) { %>
           <div class="recent-empty">Base de datos no configurada todavía.</div>
         <% } else if (grupos.length === 0) { %>
@@ -111,6 +130,7 @@
                   <th class="col-per">Persona</th>
                   <th>Descripción</th>
                   <th>Categoría</th>
+                  <th class="col-tipo">Tipo</th>
                   <th class="col-cargado">Cargado</th>
                   <th class="num">ARS</th>
                   <th class="num col-usd">USD</th>
@@ -134,12 +154,89 @@
 
     <!-- ===== Vista: Gráficos (torta + barras por categoría) ===== -->
     <div class="vista <%= vista === 'graficos' ? 'is-on' : '' %>" id="vista-graficos">
+      <%# Toggle de tipo: filtra SOLO los gráficos (total, torta, ranking, por
+          persona). Navega con ?tipo= y el backend recalcula. Default compartidos. %>
+      <div class="segmented tipo-seg" id="tipo-seg">
+        <button type="button" class="seg-opt <%= tipo === 'compartidos' ? 'is-on' : '' %>" data-tipo="compartidos">🤝 Compartidos</button>
+        <button type="button" class="seg-opt <%= tipo === 'personales' ? 'is-on' : '' %>" data-tipo="personales">👤 Mis gastos</button>
+        <button type="button" class="seg-opt <%= tipo === 'todos' ? 'is-on' : '' %>" data-tipo="todos">Todos</button>
+      </div>
+
       <div class="res-total">
         <div class="res-total-label">Total del mes (ARS)</div>
         <div class="res-total-amount"><%= totalMes %></div>
       </div>
 
-      <% if (personasTotales.length > 0) { %>
+      <!-- ===== Cierre / ajuste de cuentas (solo viendo los compartidos) ===== -->
+      <% if (tipo === 'compartidos') { %>
+      <div class="chart-card cierre-card">
+        <div class="cierre-head">
+          <div class="chart-title">Ajuste de cuentas</div>
+          <% if (cierre.cerrado) { %>
+            <span class="cierre-badge">🤝 Mes cerrado</span>
+          <% } %>
+        </div>
+
+        <% if (!cierre.hayCompartidos) { %>
+          <div class="recent-empty">No hay gastos compartidos en este mes.</div>
+        <% } else { %>
+          <p class="cierre-sub">
+            Total compartido: <strong><%= cierre.totalArsStr %></strong>
+            <% if (cierre.totalUsdStr !== '$ 0') { %> · <strong><%= cierre.totalUsdStr %></strong><% } %>
+            <span class="cierre-note">
+              División
+              <% cierre.pctPorPersona.forEach(function (p, i) { %><%= i ? ' / ' : '' %><%= p.emoji %> <%= p.pct %>%<% }) %>
+              · los gastos personales no entran
+            </span>
+          </p>
+
+          <%# Saldo agrupado por deudor: el deudor y el acreedor se nombran una sola
+              vez, y los montos (ARS y/o USD) se listan juntos en el medio. Normalmente
+              hay un único deudor; agrupamos por si en cada moneda debe una persona
+              distinta (caso raro). "debe" en vivo / "pagó" si el mes está cerrado. %>
+          <%
+            var grupos = {}
+            ;[cierre.saldoArs, cierre.saldoUsd].forEach(function (s) {
+              if (!s) return
+              var k = s.deudor.label
+              if (!grupos[k]) grupos[k] = { deudor: s.deudor, acreedor: s.acreedor, montos: [] }
+              grupos[k].montos.push(s.montoStr)
+            })
+            var llaves = Object.keys(grupos)
+          %>
+
+          <% if (llaves.length === 0) { %>
+            <div class="saldo-row saldo-quits">✅ Están a mano: nadie le debe nada al otro.</div>
+          <% } else { %>
+            <% llaves.forEach(function (k) { var g = grupos[k] %>
+              <div class="saldo-row">
+                <div class="saldo-deudor"><strong><%= g.deudor.emoji %> <%= g.deudor.label %></strong> <%= cierre.cerrado ? 'pagó:' : 'debe:' %></div>
+                <div class="saldo-montos">
+                  <% g.montos.forEach(function (m, i) { %><%= i ? ' · ' : '' %><strong class="saldo-monto"><%= m %></strong><% }) %>
+                </div>
+                <div class="saldo-acreedor">a <strong><%= g.acreedor.emoji %> <%= g.acreedor.label %></strong></div>
+              </div>
+            <% }) %>
+          <% } %>
+
+          <% if (cierre.cerrado) { %>
+            <p class="cierre-foot">🤝 Cuentas cerradas<% if (cierre.cerradoPor) { %> · por <%= cierre.cerradoPor %><% } %>.</p>
+          <% } else if (cierre.esPasado) { %>
+            <form class="cierre-form" method="post" action="/resumen/cerrar"
+                  onsubmit="return confirm('¿Cerrar este mes? El saldo queda congelado y no se puede reabrir.')">
+              <input type="hidden" name="mes" value="<%= mes %>" />
+              <p class="cierre-foot">Saldo en vivo con la división actual. Al cerrar, queda congelado para este mes.</p>
+              <button type="submit" class="btn-save cierre-btn">Cerrar mes 🤝</button>
+            </form>
+          <% } else { %>
+            <p class="cierre-foot">Saldo en vivo con la división actual. El mes en curso se puede cerrar cuando termine.</p>
+          <% } %>
+        <% } %>
+      </div>
+      <% } %>
+
+      <%# Total por persona: no tiene sentido en "Mis gastos" (ya son solo míos). %>
+      <% if (personasTotales.length > 0 && tipo !== 'personales') { %>
         <div class="chart-card">
           <div class="chart-title">Total por persona</div>
           <% personasTotales.forEach(function (p) { %>
@@ -225,11 +322,15 @@
   function rowHTML(r) {
     var badge = '<span class="cur-badge cur-' + (r.cur === 'USD' ? 'usd' : 'ars') + '">' + r.cur + '</span>'
     var cargado = (r.cur === 'USD' ? 'US$' : '$') + Math.round(r.amt).toLocaleString('es-AR')
+    var tipo = r.compartido
+      ? '<span class="tipo-chip tipo-comp">🤝 Compartido</span>'
+      : '<span class="tipo-chip tipo-pers">👤 Personal</span>'
     return '<tr>' +
       '<td class="td-date">' + esc(r.fechaLabel) + '</td>' +
       '<td class="col-per"><span class="per-cell"><span class="per-emoji">' + r.perEmoji + '</span>' + esc(r.perLabel) + '</span></td>' +
       '<td class="desc-cell">' + esc(r.desc) + '</td>' +
       '<td><span class="cat-chip cat-' + r.cat + '">' + r.catEmoji + ' ' + esc(r.catLabel) + '</span></td>' +
+      '<td class="col-tipo">' + tipo + '</td>' +
       '<td class="col-cargado"><span class="cargado"><span class="num">' + cargado + '</span>' + badge + '</span></td>' +
       '<td class="num">' + fmtARS(r.ars) + '</td>' +
       '<td class="num usd-col col-usd">' + fmtUSD(r.usd) + '</td>' +
@@ -241,7 +342,7 @@
     var f = rows[0]
     var label = state.grp === 'cat' ? f.catLabel : f.perLabel
     var emoji = state.grp === 'cat' ? f.catEmoji : f.perEmoji
-    return '<tr class="grp-row"><td colspan="8"><div class="grp-inner">' +
+    return '<tr class="grp-row"><td colspan="9"><div class="grp-inner">' +
       '<span class="grp-name">' + emoji + ' ' + esc(label) + ' <span class="grp-count">· ' + rows.length + ' mov.</span></span>' +
       '<span class="grp-tot"><span class="num">' + fmtARS(sumArs(rows)) + '</span><span class="num usd-col">' + fmtUSD(sumUsd(rows)) + '</span></span>' +
       '</div></td></tr>'
@@ -251,7 +352,7 @@
     var rows = filtered()
     var html = ''
     if (rows.length === 0) {
-      html = '<tr class="empty-row"><td colspan="8">Sin movimientos con estos filtros 🔍</td></tr>'
+      html = '<tr class="empty-row"><td colspan="9">Sin movimientos con estos filtros 🔍</td></tr>'
     } else if (state.grp === 'none') {
       rows.slice().sort(byFechaDesc).forEach(function (r) { html += rowHTML(r) })
     } else {
@@ -324,6 +425,58 @@
   })
 
   render()
+})();
+
+// ===== MOBILE: filtros (buscar + persona) sobre la lista agrupada por día =====
+;(function () {
+  var cont = document.querySelector('.gastos-mobile')
+  var qEl = document.getElementById('mvm-q')
+  var perSeg = document.getElementById('mvm-per')
+  var empty = document.getElementById('mvm-empty')
+  if (!cont || (!qEl && !perSeg)) return
+
+  var state = { q: '', per: 'all' }
+
+  function aplicar() {
+    var q = state.q.toLowerCase().trim()
+    // Para buscar por monto: dejamos solo dígitos del query (ej. "5.000" -> "5000").
+    var qNum = q.replace(/[^0-9]/g, '')
+    var filtrando = q !== '' || state.per !== 'all'
+    var visibles = 0
+    // Mostrar/ocultar cada gasto según búsqueda (descripción o monto) + persona.
+    cont.querySelectorAll('.day-group').forEach(function (grupo) {
+      var enGrupo = 0
+      grupo.querySelectorAll('.exp-row').forEach(function (row) {
+        var desc = (row.getAttribute('data-descripcion') || '').toLowerCase()
+        var per = row.getAttribute('data-nombre') || ''
+        // Monto crudo sin separadores ni decimales (ej. "5000.5" -> "5000").
+        var monto = (row.getAttribute('data-monto') || '').split('.')[0].replace(/[^0-9]/g, '')
+        var matchTexto = q === '' ||
+          desc.indexOf(q) > -1 ||
+          (qNum !== '' && monto.indexOf(qNum) > -1)
+        var ok = (state.per === 'all' || per === state.per) && matchTexto
+        row.style.display = ok ? '' : 'none'
+        if (ok) { enGrupo++; visibles++ }
+      })
+      // Ocultar el día entero si no quedó ningún gasto visible.
+      grupo.style.display = enGrupo ? '' : 'none'
+      // El total del día viene del backend (todos los gastos): al filtrar dejaría de
+      // ser cierto, así que lo escondemos mientras haya filtros activos.
+      var tot = grupo.querySelector('.day-total')
+      if (tot) tot.style.visibility = filtrando ? 'hidden' : ''
+    })
+    if (empty) empty.hidden = visibles > 0
+  }
+
+  if (qEl) qEl.addEventListener('input', function (e) { state.q = e.target.value; aplicar() })
+  if (perSeg) perSeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button')
+    if (!b) return
+    perSeg.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-on') })
+    b.classList.add('is-on')
+    state.per = b.getAttribute('data-v')
+    aplicar()
+  })
 })()
 </script>
 <% } %>

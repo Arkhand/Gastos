@@ -43,8 +43,8 @@ function getClient() {
 // LIBRO COMPARTIDO + BORRADO LÓGICO:
 // - La app es de la familia (acceso por lista blanca), así que se opera sobre TODOS
 //   los gastos, sin filtrar por usuario (el primer parámetro `_userId` se ignora).
-// - Nada se borra físicamente: `eliminado=true` marca de baja. Editar = baja lógica
-//   del registro anterior + alta de uno nuevo, así queda el historial completo.
+// - Borrar no es físico: `eliminado=true` marca de baja. Editar es un UPDATE en sitio
+//   sobre la misma fila (conserva el id), así un doble-guardado nunca duplica.
 
 // Lista los gastos activos (no eliminados), del más nuevo al más viejo.
 export async function listarGastos(_userId) {
@@ -79,6 +79,7 @@ export async function crearGasto(userId, cargadoPor, gasto) {
       monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
+      compartido: gasto.compartido ?? true,
     })
     .select()
     .single()
@@ -86,23 +87,15 @@ export async function crearGasto(userId, cargadoPor, gasto) {
   return data
 }
 
-// Editar = baja lógica del registro anterior + alta de uno nuevo (mantiene historial).
+// Editar EN SITIO: un UPDATE sobre la misma fila (mismo id). Antes hacíamos
+// baja-lógica + alta, lo que cambiaba el id en cada edición y, ante un doble-submit,
+// dejaba duplicados. Editando in situ el id no cambia: dos guardados seguidos hacen
+// el mismo UPDATE y nunca duplican. `user_id`/`cargado_por`/`created_at` no se tocan.
 export async function actualizarGasto(_userId, id, gasto) {
-  const sb = getClient()
-  // 1. Traemos el registro anterior (para conservar quién lo cargó).
-  const { data: anterior, error: e0 } = await sb.from('gastos').select('*').eq('id', id).maybeSingle()
-  if (e0) throw e0
-  if (!anterior) return null
-  // 2. Baja lógica del anterior (queda en el historial).
-  const { error: e1 } = await sb.from('gastos').update({ eliminado: true }).eq('id', id)
-  if (e1) throw e1
-  // 3. Alta del nuevo con los datos editados.
-  const { data, error: e2 } = await sb
+  const { data, error } = await getClient()
     .from('gastos')
-    .insert({
-      user_id: anterior.user_id,
-      cargado_por: anterior.cargado_por,
-      a_nombre_de: gasto.a_nombre_de ?? anterior.a_nombre_de,
+    .update({
+      a_nombre_de: gasto.a_nombre_de ?? null,
       descripcion: gasto.descripcion,
       monto: gasto.monto,
       moneda: normalizarMoneda(gasto.moneda),
@@ -110,16 +103,19 @@ export async function actualizarGasto(_userId, id, gasto) {
       monto_usd: gasto.monto_usd ?? null,
       categoria: gasto.categoria ?? null,
       fecha: gasto.fecha ?? null,
+      compartido: gasto.compartido ?? true,
     })
+    .eq('id', id)
+    .eq('eliminado', false)
     .select()
-    .single()
-  if (e2) throw e2
+    .maybeSingle()
+  if (error) throw error
   return data
 }
 
 // Corrección puntual de la IA (carga manual): actualiza SOLO descripción y
-// categoría in situ. A diferencia de actualizarGasto (baja+alta), mantiene el id
-// y el created_at, así la fila no se reordena y se puede deshacer con el mismo id.
+// categoría in situ (mismo id y created_at). actualizarGasto edita todos los
+// campos; esta toca solo esos dos para no pisar lo que la persona ya había puesto.
 export async function corregirGasto(_userId, id, { descripcion, categoria }) {
   const { error } = await getClient()
     .from('gastos')
@@ -207,4 +203,54 @@ export async function contarGastosDeCategoria(id) {
     .eq('eliminado', false)
   if (error) throw error
   return count ?? 0
+}
+
+// ===== División (config global de %) =====
+// Tabla `division`: una fila por integrante (clave = email canónico). Define qué
+// porcentaje del total compartido le toca a cada uno. La cache (config/division.js)
+// la consume y mantiene helpers síncronos, igual que las categorías.
+
+// Trae el % de cada integrante.
+export async function listarDivision() {
+  const { data, error } = await getClient().from('division').select('*')
+  if (error) throw error
+  return data ?? []
+}
+
+// Upsert del % de un integrante (alta o edición por email).
+export async function guardarDivision(persona, porcentaje) {
+  const { error } = await getClient()
+    .from('division')
+    .upsert({ persona, porcentaje, updated_at: new Date().toISOString() })
+  if (error) throw error
+}
+
+// ===== Cierres (foto congelada por mes) =====
+// Tabla `cierres`: una fila por mes cerrado (clave = 'YYYY-MM'). Guarda la foto del
+// % acordado en `division` (jsonb { email: pct }). Si existe la fila, el mes está
+// cerrado (🤝): el reparto usa esa foto y no el % global vigente.
+
+// Trae todos los cierres (para marcar qué meses están cerrados en el selector).
+export async function listarCierres() {
+  const { data, error } = await getClient().from('cierres').select('*')
+  if (error) throw error
+  return data ?? []
+}
+
+// Trae el cierre de un mes (o null si está abierto).
+export async function obtenerCierre(mes) {
+  const { data, error } = await getClient().from('cierres').select('*').eq('mes', mes).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Cierra un mes: congela la foto del % y quién lo cerró. Definitivo (no se reabre).
+export async function crearCierre(mes, division, cerradoPor) {
+  const { data, error } = await getClient()
+    .from('cierres')
+    .insert({ mes, division, cerrado_por: cerradoPor ?? null })
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

@@ -1,0 +1,39 @@
+<%- include('partials/header', { titulo: 'Configuración', user: user }) %>
+<div class="app-shell">
+<%- include('partials/sidebar', { tab: 'config' }) %>
+<div class="app-root page-config">
+  <div class="config">
+    <h1>Configuración</h1>
+    <p class="cfg-intro">Ajustá cómo funciona la app.</p>
+
+    <% if (!dbEnabled) { %>
+      <div class="recent-empty">Base de datos no configurada todavía.</div>
+    <% } else { %>
+
+    <!-- Índice: cada opción navega a su propia pantalla -->
+    <nav class="cfg-menu">
+      <a class="cfg-menu-item" href="/config/division">
+        <span class="cfg-menu-ico">⚖️</span>
+        <span class="cfg-menu-txt">
+          <span class="cfg-menu-name">División</span>
+          <span class="cfg-menu-sub">Cómo se reparten los gastos compartidos</span>
+        </span>
+        <span class="cfg-menu-arrow">›</span>
+      </a>
+      <a class="cfg-menu-item" href="/config/categorias">
+        <span class="cfg-menu-ico">🏷️</span>
+        <span class="cfg-menu-txt">
+          <span class="cfg-menu-name">Categorías</span>
+          <span class="cfg-menu-sub">Agregá, editá o quitá categorías de gastos</span>
+        </span>
+        <span class="cfg-menu-arrow">›</span>
+      </a>
+    </nav>
+
+    <% } %>
+  </div>
+
+  <%- include('partials/tabbar', { tab: 'config' }) %>
+</div>
+</div>
+<%- include('partials/footer') %>

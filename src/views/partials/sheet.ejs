@@ -5,11 +5,30 @@
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
   <div class="sheet-grab"></div>
   <div class="sheet-head">
-    <div class="sheet-title" id="sheet-title">Nuevo gasto</div>
+    <div class="sheet-head-top">
+      <div class="sheet-title" id="sheet-title">Nuevo gasto</div>
+      <%# Switch "Personal": al activarlo, el gasto pasa a nombre del usuario logueado,
+          se deshabilita el selector de persona y NO entra al reparto. Vive en el
+          header (a la altura del título). Está fuera del <form>, así que lo asociamos
+          con form="sheet-form" para que se envíe igual. %>
+      <label class="personal-switch" title="Gasto solo mío, no entra al reparto">
+        <span class="personal-switch-txt">Personal</span>
+        <input type="checkbox" id="f-personal" form="sheet-form" />
+        <span class="personal-switch-track"><span class="personal-switch-knob"></span></span>
+      </label>
+    </div>
     <div class="sheet-heard" id="sheet-heard"></div>
   </div>
 
   <form class="sheet-form" id="sheet-form" method="post" action="/nuevo" data-ia="<%= typeof iaEnabled !== 'undefined' && iaEnabled %>">
+    <%# UUID del gasto que se está editando. Vacío = alta nueva; con valor = edición.
+        Lo completa app.js al abrir la hoja en modo editar y lo limpia en modo nuevo.
+        El form SIEMPRE postea a /nuevo: el backend decide crear o editar según esto,
+        así un fallo de JS nunca crea un duplicado de algo que se estaba editando. %>
+    <input type="hidden" name="edit_id" id="f-edit-id" value="" />
+    <%# Query string del Resumen que se está viendo (mes, vista, …): al editar/borrar,
+        el redirect vuelve a esa misma vista. Lo completa app.js al abrir la hoja. %>
+    <input type="hidden" name="volver" id="f-volver" value="" />
     <div class="field">
       <label for="f-descripcion">¿Qué fue?</label>
       <input class="inp" name="descripcion" id="f-descripcion" placeholder="Ej: Súper" list="desc-sugerencias" autocomplete="off" />
@@ -37,7 +56,7 @@
 
     <div class="field">
       <label>¿A nombre de quién?</label>
-      <div class="segmented" id="persona-seg" data-default="<%= personaDefault %>">
+      <div class="segmented" id="persona-seg" data-default="<%= personaDefault %>" data-yo="<%= personaDefault %>">
         <% personas.forEach(function (p) { %>
           <button type="button" class="seg-opt" data-persona="<%= p.id %>">
             <span class="seg-emoji"><%= p.emoji %></span><%= p.label %>
@@ -45,6 +64,8 @@
         <% }) %>
       </div>
       <input type="hidden" name="a_nombre_de" id="f-persona" value="" />
+      <%# Compartido por defecto; el checkbox de arriba lo invierte. %>
+      <input type="hidden" name="compartido" id="f-compartido" value="true" />
     </div>
 
     <div class="field">
@@ -82,6 +103,7 @@
 
   <!-- Borrar (modo edición): form aparte, JS le pone el action y lo muestra -->
   <form id="sheet-delete-form" method="post" action="#" style="display:none" onsubmit="return confirm('¿Seguro que querés borrar este gasto?')">
+    <input type="hidden" name="volver" id="f-volver-del" value="" />
     <button type="submit" class="btn-delete">🗑 Borrar gasto</button>
   </form>
 </div>

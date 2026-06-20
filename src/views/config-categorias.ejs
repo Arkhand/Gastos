@@ -1,10 +1,10 @@
-<%- include('partials/header', { titulo: 'Configuración', user: user }) %>
+<%- include('partials/header', { titulo: 'Categorías', user: user }) %>
 <div class="app-shell">
 <%- include('partials/sidebar', { tab: 'config' }) %>
 <div class="app-root page-config">
   <div class="config">
+    <a class="cfg-back" href="/config">‹ Configuración</a>
     <h1>Categorías</h1>
-    <p class="cfg-intro">Agregá, editá o quitá las categorías de tus gastos. La IA usa estas mismas categorías al interpretar lo que cargás por voz o a mano.</p>
 
     <% if (!dbEnabled) { %>
       <div class="recent-empty">Base de datos no configurada todavía.</div>
@@ -30,6 +30,8 @@
          if (a) { %>
       <div class="cfg-alert cfg-alert-<%= a[0] %>"><%= a[1] %></div>
     <%   } } %>
+
+    <p class="cfg-intro">Agregá, editá o quitá las categorías de tus gastos. La IA usa estas mismas categorías al interpretar lo que cargás por voz o a mano.</p>
 
     <!-- Alta de categoría -->
     <section class="cfg-card">

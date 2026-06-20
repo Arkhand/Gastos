@@ -7,7 +7,17 @@ import {
   actualizarGasto,
   corregirGasto,
   eliminarGasto,
+  listarCierres,
+  obtenerCierre,
+  crearCierre,
 } from '../models/db.js'
+import {
+  ensureDivisionCargada,
+  getDivision,
+  recargarDivision,
+  repartir,
+  calcularSaldo,
+} from '../config/division.js'
 import {
   getCategorias,
   catById,
@@ -60,7 +70,7 @@ function agruparPorDia(gastos) {
 // Lee y valida los campos de un gasto desde el body (la hoja). a_nombre_de se
 // normaliza al email canónico de la persona (o null si no es válido).
 function leerGastoDelBody(body) {
-  const { descripcion, monto, categoria, fecha, moneda, a_nombre_de } = body ?? {}
+  const { descripcion, monto, categoria, fecha, moneda, a_nombre_de, compartido } = body ?? {}
   const montoNum = Number(monto)
   if (!descripcion || !Number.isFinite(montoNum) || montoNum < 0) {
     return { ok: false, error: 'Descripción y monto (válido) son obligatorios.' }
@@ -74,6 +84,8 @@ function leerGastoDelBody(body) {
       a_nombre_de: normalizarPersona(a_nombre_de),
       categoria: normalizarCategoria(categoria),
       fecha: fecha ? String(fecha) : null,
+      // Default compartido: solo es personal si llega explícitamente "false".
+      compartido: String(compartido) !== 'false',
     },
   }
 }
@@ -153,6 +165,13 @@ export const crear = async (req, res, next) => {
       res.status(503).send('Base de datos no configurada.')
       return
     }
+    // Si la hoja trae el UUID de un gasto (edit_id), esto es una EDICIÓN, no un alta.
+    // Identificar por el id (y no por el action del form) evita que un fallo de JS
+    // termine creando un duplicado de algo que se estaba editando.
+    const editId = String(req.body?.edit_id || '').trim()
+    if (editId) {
+      return actualizar(req, res, next)
+    }
     const r = leerGastoDelBody(req.body)
     if (!r.ok) {
       res.redirect('/inicio')
@@ -171,15 +190,37 @@ export const crear = async (req, res, next) => {
   }
 }
 
+// Destino de Resumen preservando la vista que se estaba viendo (la hoja manda en
+// `volver` la query string de Resumen: mes, vista, …). Reconstruimos la URL desde
+// CERO con solo los parámetros conocidos y validados, para no reflejar nada que
+// venga del cliente sin control (evita open-redirect / basura en la query).
+function resumenVolver(body) {
+  const params = new URLSearchParams()
+  let raw = {}
+  try {
+    raw = Object.fromEntries(new URLSearchParams(String(body?.volver || '')))
+  } catch {
+    raw = {}
+  }
+  if (/^\d{4}-\d{2}$/.test(raw.mes || '')) params.set('mes', raw.mes)
+  if (raw.vista === 'graficos' || raw.vista === 'gastos') params.set('vista', raw.vista)
+  const qs = params.toString()
+  return qs ? '/resumen?' + qs : '/resumen'
+}
+
 export const actualizar = async (req, res, next) => {
   try {
     if (!dbEnabled) {
       res.status(503).send('Base de datos no configurada.')
       return
     }
+    // Id del gasto a editar: de la URL (/gastos/:id/editar) o del hidden de la hoja
+    // (edit_id, cuando se postea a /nuevo). Sin id válido no hay nada que editar.
+    const id = String(req.params.id || req.body?.edit_id || '').trim()
+    const destino = resumenVolver(req.body)
     const r = leerGastoDelBody(req.body)
-    if (!r.ok) {
-      res.redirect('/resumen')
+    if (!r.ok || !id) {
+      res.redirect(destino)
       return
     }
     const rate = await obtenerCotizacion()
@@ -188,8 +229,8 @@ export const actualizar = async (req, res, next) => {
       a_nombre_de: r.datos.a_nombre_de ?? personaPorDefecto(req.user.email),
       ...convertirMontos(r.datos.moneda, r.datos.monto, rate),
     }
-    await actualizarGasto(req.user.id, req.params.id, datos)
-    res.redirect('/resumen')
+    await actualizarGasto(req.user.id, id, datos)
+    res.redirect(destino)
   } catch (err) {
     next(err)
   }
@@ -202,7 +243,7 @@ export const eliminar = async (req, res, next) => {
       return
     }
     await eliminarGasto(req.user.id, req.params.id)
-    res.redirect('/resumen')
+    res.redirect(resumenVolver(req.body))
   } catch (err) {
     next(err)
   }
@@ -234,25 +275,46 @@ export const corregir = async (req, res, next) => {
 export const resumen = async (req, res, next) => {
   try {
     await ensureCategoriasCargadas()
+    await ensureDivisionCargada()
     let gastos = []
-    if (dbEnabled) gastos = await listarGastos(req.user.id)
+    let cierres = []
+    if (dbEnabled) {
+      gastos = await listarGastos(req.user.id)
+      cierres = await listarCierres()
+    }
     const hoy = hoyAR()
     const mesActual = hoy.slice(0, 7)
     // Mes elegido (?mes=YYYY-MM); por defecto el actual y nunca futuro.
     const mesReq = String(req.query.mes || '')
     const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
     const vista = req.query.vista === 'graficos' ? 'graficos' : 'gastos'
+    // Filtro de tipo para los GRÁFICOS (?tipo=). Solo afecta torta/ranking/totales,
+    // no la lista ni la tabla. compartidos (default) | personales (mis personales) | todos
+    const tipo = ['personales', 'todos'].includes(req.query.tipo) ? req.query.tipo : 'compartidos'
+    // Meses cerrados (🤝): mapa mes -> foto del % congelado.
+    const cierrePorMes = {}
+    for (const c of cierres) cierrePorMes[c.mes] = c
     // Meses con datos cargados (YYYY-MM distintos), de mayor a menor. Incluye el
     // mes elegido aunque no tenga gastos, para que el selector lo refleje.
     const mesesSet = new Set(gastos.map((g) => (g.fecha || hoy).slice(0, 7)))
     mesesSet.add(mes)
     const meses = [...mesesSet]
       .sort((a, b) => (a < b ? 1 : -1))
-      .map((m) => ({ value: m, label: mesLabel(m) }))
+      .map((m) => ({ value: m, label: mesLabel(m), cerrado: !!cierrePorMes[m] }))
     // Gastos del mes elegido (sin fecha = cuenta como hoy).
     const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
+    // Base SOLO para los gráficos, filtrada por el toggle de tipo. La lista y la
+    // tabla siguen usando gastosMes (todos). "personales" = los míos (a mi nombre).
+    const miEmail = personaPorDefecto(req.user.email)
+    const gastosGraf = gastosMes.filter((g) =>
+      tipo === 'todos'
+        ? true
+        : tipo === 'personales'
+        ? g.compartido === false && normalizarPersona(g.a_nombre_de) === miEmail
+        : g.compartido !== false
+    )
     const porCat = {}
-    for (const g of gastosMes) {
+    for (const g of gastosGraf) {
       if (g.moneda !== 'ARS') continue
       // normalizarCategoria mapea null/categoría archivada/inexistente al id de
       // "Otros", así esos gastos suman a una fila visible (no se pierden del total)
@@ -280,9 +342,10 @@ export const resumen = async (req, res, next) => {
     })
     const colorOtros = catById(otrosId()).color_bg
     const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : colorOtros
-    // Total por persona (ARS y USD), sumando los montos convertidos del mes.
+    // Total por persona (ARS y USD), sumando los montos convertidos del mes. Es
+    // parte de los gráficos: usa la base filtrada por el toggle.
     const porPersona = {}
-    for (const g of gastosMes) {
+    for (const g of gastosGraf) {
       const id = normalizarPersona(g.a_nombre_de)
       if (!id) continue
       if (!porPersona[id]) porPersona[id] = { ars: 0, usd: 0 }
@@ -295,6 +358,53 @@ export const resumen = async (req, res, next) => {
       arsStr: fmtMonto('ARS', porPersona[p.id].ars),
       usdStr: fmtMonto('USD', porPersona[p.id].usd),
     }))
+    // --- Cierre / ajuste de cuentas ---
+    // Solo cuentan los gastos COMPARTIDOS (los personales quedan afuera). Sumamos el
+    // total del mes y lo que PAGÓ cada persona (ARS y USD por separado). Con eso y el
+    // % acordado, calcularSaldo dice quién le debe a quién: lo que cada uno puso vs.
+    // lo que le tocaba. Si el mes está cerrado se usa la foto congelada del %; si
+    // está abierto, el % global vigente (el saldo se ve "en vivo").
+    let compArs = 0
+    let compUsd = 0
+    const pagado = {}
+    for (const g of gastosMes) {
+      if (g.compartido === false) continue
+      const ars = Number(g.monto_ars) || (g.moneda === 'ARS' ? Number(g.monto) : 0)
+      const usd = Number(g.monto_usd) || (g.moneda === 'USD' ? Number(g.monto) : 0)
+      compArs += ars
+      compUsd += usd
+      const id = normalizarPersona(g.a_nombre_de)
+      if (!id) continue
+      if (!pagado[id]) pagado[id] = { ars: 0, usd: 0 }
+      pagado[id].ars += ars
+      pagado[id].usd += usd
+    }
+    const cierreRow = cierrePorMes[mes]
+    const divUsada = cierreRow ? cierreRow.division : getDivision()
+    const saldo = calcularSaldo(compArs, compUsd, pagado, divUsada)
+    // % aplicado por persona (para mostrar "70% / 30%" junto al saldo).
+    const pctPorPersona = PERSONAS.filter((p) => p.id in divUsada).map((p) => ({
+      label: p.label,
+      emoji: p.emoji,
+      pct: Number(divUsada[p.id]) || 0,
+    }))
+    const cierre = {
+      cerrado: !!cierreRow,
+      cerradoPor: cierreRow ? cierreRow.cerrado_por || '' : '',
+      // Solo se puede cerrar un mes ya pasado (el actual sigue recibiendo gastos).
+      esPasado: mes < mesActual,
+      totalArsStr: fmtMonto('ARS', compArs),
+      totalUsdStr: fmtMonto('USD', compUsd),
+      hayCompartidos: compArs > 0 || compUsd > 0,
+      pctPorPersona,
+      // Saldo por moneda: null = saldado / sin gastos; objeto = hay deuda.
+      saldoArs: saldo.ars
+        ? { ...saldo.ars, montoStr: fmtMonto('ARS', saldo.ars.monto) }
+        : null,
+      saldoUsd: saldo.usd
+        ? { ...saldo.usd, montoStr: fmtMonto('USD', saldo.usd.monto) }
+        : null,
+    }
     // Tabla detallada (vista de escritorio): una fila por gasto del mes, con id para
     // poder disparar la edición. JSON seguro para embeber en <script>.
     const movs = gastosMes.map((g) => filaMovimiento(g, hoy))
@@ -321,8 +431,42 @@ export const resumen = async (req, res, next) => {
       mes,
       meses,
       vista,
+      tipo,
+      cierre,
+      ok: req.query.ok || '',
       tab: 'stats',
     })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// POST /resumen/cerrar  { mes }  ->  redirect /resumen?mes=<mes>&ok=cerrado
+// Cierra un mes (🤝): congela el % global vigente como foto del mes. Definitivo:
+// rechaza si el mes ya está cerrado, no tiene formato válido, o NO es un mes pasado
+// (el mes en curso todavía puede recibir gastos, así que no se puede cerrar).
+export const cerrarMes = async (req, res, next) => {
+  try {
+    if (!dbEnabled) {
+      res.status(503).send('Base de datos no configurada.')
+      return
+    }
+    const mes = String(req.body?.mes || '')
+    const mesActual = hoyAR().slice(0, 7)
+    // Solo meses estrictamente anteriores al actual (mes < mesActual).
+    if (!/^\d{4}-\d{2}$/.test(mes) || mes >= mesActual) {
+      return res.redirect('/resumen')
+    }
+    // El cierre se dispara desde la vista Gráficos: volvemos ahí, al mismo mes.
+    const volver = '/resumen?mes=' + encodeURIComponent(mes) + '&vista=graficos'
+    const yaCerrado = await obtenerCierre(mes)
+    if (yaCerrado) {
+      return res.redirect(volver)
+    }
+    await ensureDivisionCargada()
+    const foto = getDivision()
+    await crearCierre(mes, foto, req.user.displayName)
+    res.redirect(volver + '&ok=cerrado')
   } catch (err) {
     next(err)
   }
@@ -351,6 +495,7 @@ function filaMovimiento(g, hoy) {
     amt: Number(g.monto) || 0,
     ars: g.monto_ars != null ? Number(g.monto_ars) : moneda === 'ARS' ? Number(g.monto) : null,
     usd: g.monto_usd != null ? Number(g.monto_usd) : moneda === 'USD' ? Number(g.monto) : null,
+    compartido: g.compartido !== false,
   }
 }
 
