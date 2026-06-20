@@ -357,6 +357,16 @@ body.sheet-open .sheet { transform:translateX(-50%) translateY(0); }
 /* ---------- Resumen ---------- */
 .resumen { padding:8px 22px 120px; }
 .resumen h1 { font-family:var(--font-d); font-weight:700; font-size:28px; margin:6px 0 16px; }
+/* Header del Resumen: título + toggle de tipo. En mobile el toggle baja abajo. */
+.resumen-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.resumen-head h1 { margin:6px 0 10px; }
+.tipo-seg { margin:0 0 10px; flex:0 0 auto; }
+.tipo-seg .seg-opt { flex:0 0 auto; padding:8px 12px; font-size:13px; border-radius:13px; gap:5px; }
+@media (max-width:560px) {
+  .resumen-head { gap:0; }
+  .tipo-seg { width:100%; margin-bottom:14px; }
+  .tipo-seg .seg-opt { flex:1; padding:9px 6px; font-size:12.5px; }
+}
 .res-total { background:var(--card); border-radius:22px; padding:18px; box-shadow:0 6px 16px rgba(120,90,60,.1); margin-bottom:18px; }
 .res-total-label { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--ink-soft); font-weight:800; }
 .res-total-amount { font-family:var(--font-d); font-weight:700; font-size:30px; color:var(--coral-deep); margin-top:4px; }

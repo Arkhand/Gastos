@@ -288,20 +288,29 @@ export const resumen = async (req, res, next) => {
     const mesReq = String(req.query.mes || '')
     const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
     const vista = req.query.vista === 'graficos' ? 'graficos' : 'gastos'
+    // Filtro por tipo de gasto (?tipo=): qué se muestra en TODO el resumen.
+    //   compartidos (default) | personales (todos los personales) | todos
+    const tipo = ['personales', 'todos'].includes(req.query.tipo) ? req.query.tipo : 'compartidos'
     // Meses cerrados (🤝): mapa mes -> foto del % congelado.
     const cierrePorMes = {}
     for (const c of cierres) cierrePorMes[c.mes] = c
     // Meses con datos cargados (YYYY-MM distintos), de mayor a menor. Incluye el
-    // mes elegido aunque no tenga gastos, para que el selector lo refleje.
+    // mes elegido aunque no tenga gastos, para que el selector lo refleje. (No se
+    // filtra por tipo: el selector siempre ofrece todos los meses con datos.)
     const mesesSet = new Set(gastos.map((g) => (g.fecha || hoy).slice(0, 7)))
     mesesSet.add(mes)
     const meses = [...mesesSet]
       .sort((a, b) => (a < b ? 1 : -1))
       .map((m) => ({ value: m, label: mesLabel(m), cerrado: !!cierrePorMes[m] }))
-    // Gastos del mes elegido (sin fecha = cuenta como hoy).
+    // Gastos del mes elegido (sin fecha = cuenta como hoy). gastosMes = todos (lo usa
+    // el cierre, que reparte solo compartidos). gastosMesVista = filtrado por el
+    // toggle, base de TODO lo demás (lista, tabla, gráficos, totales).
     const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
+    const gastosMesVista = gastosMes.filter((g) =>
+      tipo === 'todos' ? true : tipo === 'personales' ? g.compartido === false : g.compartido !== false
+    )
     const porCat = {}
-    for (const g of gastosMes) {
+    for (const g of gastosMesVista) {
       if (g.moneda !== 'ARS') continue
       // normalizarCategoria mapea null/categoría archivada/inexistente al id de
       // "Otros", así esos gastos suman a una fila visible (no se pierden del total)
@@ -331,7 +340,7 @@ export const resumen = async (req, res, next) => {
     const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : colorOtros
     // Total por persona (ARS y USD), sumando los montos convertidos del mes.
     const porPersona = {}
-    for (const g of gastosMes) {
+    for (const g of gastosMesVista) {
       const id = normalizarPersona(g.a_nombre_de)
       if (!id) continue
       if (!porPersona[id]) porPersona[id] = { ars: 0, usd: 0 }
@@ -377,6 +386,9 @@ export const resumen = async (req, res, next) => {
     const cierre = {
       cerrado: !!cierreRow,
       cerradoPor: cierreRow ? cierreRow.cerrado_por || '' : '',
+      // El ajuste de cuentas solo aplica viendo los compartidos (es lo que reparte).
+      // En "personales"/"todos" la vista oculta este bloque.
+      aplica: tipo === 'compartidos',
       // Solo se puede cerrar un mes ya pasado (el actual sigue recibiendo gastos).
       esPasado: mes < mesActual,
       totalArsStr: fmtMonto('ARS', compArs),
@@ -391,9 +403,9 @@ export const resumen = async (req, res, next) => {
         ? { ...saldo.usd, montoStr: fmtMonto('USD', saldo.usd.monto) }
         : null,
     }
-    // Tabla detallada (vista de escritorio): una fila por gasto del mes, con id para
-    // poder disparar la edición. JSON seguro para embeber en <script>.
-    const movs = gastosMes.map((g) => filaMovimiento(g, hoy))
+    // Tabla detallada (vista de escritorio): una fila por gasto del mes (ya filtrado
+    // por el toggle), con id para disparar la edición. JSON seguro para <script>.
+    const movs = gastosMesVista.map((g) => filaMovimiento(g, hoy))
     const movsJson = JSON.stringify(movs).replace(/</g, '\\u003c')
     res.render('resumen', {
       user: req.user,
@@ -411,12 +423,13 @@ export const resumen = async (req, res, next) => {
       catById,
       personaLabel,
       fmt: fmtMonto,
-      grupos: agruparPorDia(gastosMes),
+      grupos: agruparPorDia(gastosMesVista),
       movs,
       movsJson,
       mes,
       meses,
       vista,
+      tipo,
       cierre,
       ok: req.query.ok || '',
       tab: 'stats',
