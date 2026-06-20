@@ -28,10 +28,12 @@ export default function Mic({ onGuardarDirecto, onAbrirHojaPrecargada, sinSoport
         const data = await interpretarVoz(texto)
         setLabel(MIC_IDLE)
         const g = data.gasto || {}
+        // Solo "qué" y "cuánto" son obligatorios. "Quién" NUNCA falta: si la IA no
+        // lo detectó, el gasto se guarda a nombre del usuario logueado (igual que la
+        // app vieja). Así "gasté 100 en el súper" se guarda directo.
         const faltan = []
         if (!g.descripcion) faltan.push('qué')
         if (!(Number(g.monto) > 0)) faltan.push('cuánto')
-        if (!g.persona) faltan.push('quién')
         if (faltan.length) {
           setEstado('idle')
           toast('warning', 'Me faltó: ' + faltan.join(', ') + '. Completalo 👇')
@@ -40,7 +42,8 @@ export default function Mic({ onGuardarDirecto, onAbrirHojaPrecargada, sinSoport
           setEstado('happy')
           setBubble('¡Anotado! 📝')
           setBubbleListening(false)
-          await onGuardarDirecto?.(g, texto)
+          // Aviso si la IA NO detectó a la persona (cayó en la del usuario por defecto).
+          await onGuardarDirecto?.(g, texto, !g.persona)
           setTimeout(() => setEstado('idle'), 1500)
         }
       } catch (err) {

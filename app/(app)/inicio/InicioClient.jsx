@@ -42,10 +42,17 @@ export default function InicioClient({ personaDefault }) {
     setSheetOpen(true)
   }
 
-  // Voz: gasto completo -> guardar directo.
-  async function guardarDirecto(g) {
+  // Editar un gasto (de la BD: tiene a_nombre_de, categoria, compartido, etc.).
+  function editar(g) {
+    setSheetInitial(g)
+    setSheetOpen(true)
+  }
+
+  // Voz: gasto completo -> guardar directo. `personaIncierta` = la IA no detectó a
+  // quién, así que cayó en el usuario logueado (lo avisamos y ofrecemos editar).
+  async function guardarDirecto(g, _texto, personaIncierta) {
     try {
-      await crear.mutateAsync({
+      const r = await crear.mutateAsync({
         descripcion: g.descripcion,
         monto: Number(g.monto),
         moneda: g.moneda || 'ARS',
@@ -54,7 +61,10 @@ export default function InicioClient({ personaDefault }) {
         fecha: g.fecha || null,
         compartido: true, // la voz siempre es compartido
       })
-      toast('success', 'Gasto guardado ✓')
+      const creado = r?.gasto
+      const msg = personaIncierta ? 'Guardado a tu nombre ✓' : 'Gasto guardado ✓'
+      // Ofrecemos editar el gasto recién creado (para corregir lo que puso la IA).
+      toast('success', msg, creado ? { label: 'Editar', onClick: () => editar(creado) } : undefined)
     } catch (err) {
       toast('error', err.message || 'No se pudo guardar')
     }
