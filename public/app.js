@@ -501,12 +501,26 @@
     // Validación al guardar: descripción, monto y persona son obligatorios.
     // Si falta algo, no enviamos y mostramos un warning (en vez del popup nativo).
     if (form) form.addEventListener('submit', function (e) {
+      // Anti doble-submit: si ya estamos guardando (este submit, o el de la voz),
+      // ignoramos clicks/Enter posteriores. Evita crear duplicados mientras la
+      // página recarga. El backend además es idempotente como red de seguridad.
+      if (guardando) {
+        e.preventDefault()
+        return
+      }
       var faltan = camposFaltantes()
       if (faltan.length) {
         e.preventDefault()
         toast('warning', 'Te falta: ' + faltan.join(', '))
         focoEn(faltan[0])
         return
+      }
+      // A partir de acá el form SE VA A enviar: bloqueamos reenvíos y deshabilitamos
+      // el botón (se rehabilita solo al recargar la página tras el redirect).
+      guardando = true
+      if (saveBtn) {
+        saveBtn.disabled = true
+        saveBtn.classList.add('is-saving')
       }
       // Carga manual NUEVA con IA activa (no voz, no edición): dejamos una marca para
       // que, ya guardado y recargado, la IA revise typos/categoría "de fondo". La
