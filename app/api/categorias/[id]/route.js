@@ -25,6 +25,8 @@ export async function PATCH(request, { params }) {
     if (!nombre) return NextResponse.json({ error: 'nombre' }, { status: 400 })
     if (nombre.length > NOMBRE_MAX) return NextResponse.json({ error: 'largo' }, { status: 400 })
 
+    // Rechaza el nombre si choca con OTRA categoría (excluye la propia por id, así
+    // editar solo el emoji/hint sin cambiar el nombre no se autodetecta como duplicado).
     const todas = await listarCategorias()
     const norm = normalizarNombre(nombre)
     const choque = todas.find((c) => c.id !== id && normalizarNombre(c.nombre) === norm)
@@ -51,6 +53,8 @@ export async function DELETE(request, { params }) {
     if (!cat) return NextResponse.json({ error: 'no-existe' }, { status: 404 })
     if (cat.es_otros) return NextResponse.json({ error: 'otros-imborrable' }, { status: 409 })
 
+    // Si tiene gastos asociados, archiva (baja lógica) para no romper esos gastos;
+    // si no tiene ninguno, borra físico (no deja basura).
     const usados = await contarGastosDeCategoria(id)
     if (usados > 0) await marcarCategoriaEliminada(id, true)
     else await eliminarCategoriaFisica(id)

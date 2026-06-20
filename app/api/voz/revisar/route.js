@@ -14,6 +14,8 @@ export async function POST(request) {
     const r = await revisarGasto(descripcion, categoria)
     return NextResponse.json({ ok: true, descripcion: r.descripcion, categoria: r.categoria })
   } catch (err) {
+    // 401 (sin sesión) pasa tal cual y no se loguea; el resto -> 502 (la revisión
+    // es opcional, el front sigue con la descripción/categoría que ya tenía).
     const status = err.status || 500
     if (status === 401) return NextResponse.json({ error: err.message }, { status })
     console.error('[api/voz revisar]', err.message)

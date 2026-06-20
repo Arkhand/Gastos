@@ -37,6 +37,7 @@ export default function InicioClient({ personaDefault }) {
     return fmtMonto('ARS', t)
   }, [gastos, hoy])
 
+  // Abrir la hoja vacía (FAB ＋ o fallback cuando no hay soporte de voz).
   function abrirNuevo() {
     setSheetInitial(null)
     setSheetOpen(true)

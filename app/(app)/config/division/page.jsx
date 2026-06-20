@@ -45,6 +45,8 @@ export default function ConfigDivisionPage() {
   async function onSubmit(e) {
     e.preventDefault()
     setAviso('')
+    // La API espera una clave `pct_<email>` por integrante (ver PUT /api/division),
+    // que revalida que sumen 100 y responde 'division-suma' si no.
     const body = {}
     personas.forEach((p) => (body['pct_' + p.persona] = valores[p.persona]))
     try {

@@ -18,6 +18,9 @@ export async function PATCH(request, { params }) {
     if (!body?.descripcion || !Number.isFinite(montoNum) || montoNum < 0) {
       return NextResponse.json({ error: 'Descripción y monto válidos son obligatorios' }, { status: 400 })
     }
+    // Mismo armado que en POST /api/gastos: normaliza persona (cae en el logueado),
+    // categoría (cae en "Otros") y `compartido` (true salvo el string 'false'), y
+    // recalcula monto_ars/monto_usd con la cotización del momento.
     const rate = await obtenerCotizacion()
     const datos = {
       descripcion: String(body.descripcion),

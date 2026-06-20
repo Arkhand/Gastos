@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
-// Barra lateral (desktop). Portado de partials/sidebar.ejs.
+// Barra lateral de navegación (desktop). Mismos 4 destinos que la TabBar mobile.
+// Cada item define cómo decidir si está activo: `match(pathname)` (Inicio/Nosotros
+// exactos, Resumen/Config por prefijo, para que las subrutas marquen el padre).
 const ITEMS = [
   { href: '/inicio', label: 'Cargar', match: (p) => p === '/inicio', icon: <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /> },
   { href: '/resumen', label: 'Resumen', match: (p) => p.startsWith('/resumen'), icon: <><rect x="4" y="12" width="4" height="7" rx="1.2" fill="currentColor" /><rect x="10" y="7" width="4" height="12" rx="1.2" fill="currentColor" /><rect x="16" y="9" width="4" height="10" rx="1.2" fill="currentColor" /></> },
@@ -14,8 +16,11 @@ const ITEMS = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  // `pending` = destino recién clickeado: marca el item como activo AL INSTANTE
+  // (feedback optimista) mientras Next navega; se limpia cuando cambia el pathname.
   const [pending, setPending] = useState(null)
   useEffect(() => { setPending(null) }, [pathname])
+  // Prefetch de todas las rutas al montar → la navegación se siente inmediata.
   useEffect(() => { ITEMS.forEach((it) => router.prefetch(it.href)) }, [router])
   const actual = pending || pathname
   return (

@@ -5,6 +5,8 @@ import { recargarCategorias, normalizarNombre, colorPara } from '../../../lib/ca
 
 const NOMBRE_MAX = 24
 
+// Normaliza una fila cruda de la BD a la forma que consume la UI (agrega `label`
+// como alias de `nombre` y rellena defaults de color/emoji por si vinieran null).
 function paraVista(row) {
   return {
     id: row.id,
@@ -57,6 +59,8 @@ export async function POST(request) {
         { status: 409 }
       )
     }
+    // El color se deriva del nombre (estable); la nueva queda al final del orden:
+    // max(orden de las que NO son "Otros") + 10, así "Otros" (orden 999) sigue última.
     const [bg, ink] = colorPara(nombre)
     const ordenes = todas.filter((c) => !c.es_otros).map((c) => c.orden ?? 0)
     const orden = (ordenes.length ? Math.max(...ordenes) : 0) + 10

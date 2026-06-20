@@ -10,6 +10,9 @@ import {
   useRevivirCategoria,
 } from '../../../../lib/api.js'
 
+// Mapa de código de resultado -> [tipo, mensaje] para el cartel de aviso. Las
+// claves son los `err.code` que devuelve la API (lib/api.js) o las de éxito que
+// fija cada handler ('creada', 'archivada', etc.).
 const AVISOS = {
   creada: ['ok', 'Categoría creada ✓'],
   editada: ['ok', 'Cambios guardados ✓'],
@@ -32,6 +35,8 @@ export default function ConfigCategoriasPage() {
   const borrar = useBorrarCategoria()
   const revivir = useRevivirCategoria()
 
+  // `aviso` = código del último cartel (clave de AVISOS). `nueva` = form de alta.
+  // `editId`/`editData` = id de la categoría que se está editando inline + su form.
   const [aviso, setAviso] = useState('')
   const [nueva, setNueva] = useState({ emoji: '', nombre: '', hint: '' })
   const [editId, setEditId] = useState(null)
@@ -40,6 +45,8 @@ export default function ConfigCategoriasPage() {
   const activas = data?.activas ?? []
   const borradas = data?.borradas ?? []
 
+  // Los 4 handlers comparten el mismo molde: llaman a la mutation, muestran el
+  // aviso de éxito y, ante error, muestran el mensaje según `err.code`.
   async function onCrear(e) {
     e.preventDefault()
     setAviso('')

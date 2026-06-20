@@ -353,19 +353,23 @@ function MobileLista({ grupos, match, filtrando, catLookup, onEdit }) {
 }
 
 // Tabla desktop con filtros (buscar, persona, categoría, moneda, agrupación).
+// Tiene su propio estado de filtros; recibe `movs` (filas ya calculadas con
+// filaMovimiento) y `onEdit(id)` para abrir la hoja de edición.
 function TablaDesktop({ movs, onEdit }) {
   const [q, setQ] = useState('')
   const [per, setPer] = useState('all')
   const [cat, setCat] = useState('all')
   const [cur, setCur] = useState('all')
-  const [grp, setGrp] = useState('none')
+  const [grp, setGrp] = useState('none') // agrupación: none | cat | per
 
+  // Categorías presentes en el mes (para poblar el desplegable de filtro).
   const catsUnicas = useMemo(() => {
     const m = new Map()
     movs.forEach((r) => m.set(r.cat, { id: r.cat, label: r.catLabel, emoji: r.catEmoji }))
     return [...m.values()]
   }, [movs])
 
+  // Filas tras aplicar los 4 filtros (persona, categoría, moneda y texto en desc).
   const rows = useMemo(() => {
     return movs.filter(
       (r) =>
@@ -376,6 +380,8 @@ function TablaDesktop({ movs, onEdit }) {
     )
   }, [movs, per, cat, cur, q])
 
+  // Helpers de formato y suma (ARS/USD se totalizan por separado). `byFecha`
+  // ordena de más nuevo a más viejo. `tArs`/`tUsd` = totales de las filas visibles.
   const fmtARS = (n) => (n == null ? '—' : '$' + Math.round(n).toLocaleString('es-AR'))
   const fmtUSD = (n) => (n == null ? '—' : 'US$' + Math.round(n).toLocaleString('es-AR'))
   const sumArs = (r) => r.reduce((s, x) => s + (x.ars || 0), 0)
@@ -383,6 +389,8 @@ function TablaDesktop({ movs, onEdit }) {
   const byFecha = (a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)
   const tArs = sumArs(rows), tUsd = sumUsd(rows)
 
+  // Una fila <tr> de la tabla (fecha, persona, descripción, categoría, tipo,
+  // monto cargado, equivalentes ARS/USD y botón editar).
   function Fila({ r }) {
     return (
       <tr>
@@ -399,6 +407,8 @@ function TablaDesktop({ movs, onEdit }) {
     )
   }
 
+  // Cuerpo de la tabla: vacío, plano (ordenado por fecha) o agrupado por
+  // categoría/persona (cada grupo con su encabezado y subtotal, ordenado por monto).
   let cuerpo
   if (rows.length === 0) {
     cuerpo = <tr className="empty-row"><td colSpan="9">Sin movimientos con estos filtros 🔍</td></tr>

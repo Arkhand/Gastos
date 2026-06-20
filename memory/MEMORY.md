@@ -1,3 +1,4 @@
-- [Vercel deployment](vercel-deployment.md) — prod URL https://gastos-danis.vercel.app, Express app, why vercel.json forces framework=express
-- [Supabase](supabase.md) — project ref eagnsivzummrzqvzubkv, tabla gastos, RLS sin políticas (service_role), MCP conectado
-- [Claude Design](claude-design.md) — proyecto design-system 'Gastos Design' (7d4d4a35-…), sync desde carpeta local design-system/; ojo el viejo 'Gastos' es proyecto normal no sincronizable
+- [Vercel deployment](vercel-deployment.md) — stack Next.js 15 App Router en Vercel (ya NO Express/EJS), deploy, login Google + iron-session, env vars, voz IA Groq+Gemini, PWA
+- [App arquitectura](app-arquitectura.md) — pantallas, flujo de datos (API → React Query → Client), endpoints y reglas de negocio (libro compartido, soft-delete, edición in-situ, monedas, categorías, división, cierres). Leer antes de tocar pantallas/lógica
+- [Supabase](supabase.md) — ref eagnsivzummrzqvzubkv, 4 tablas (gastos/categorias/division/cierres), service_role, RLS (gastos/categorias enabled sin políticas; division/cierres deshabilitado)
+- [Claude Design](claude-design.md) — proyecto design-system 'Gastos Design' (de527ce6-…), bundle sincronizable design-system/; fuente de verdad del CSS = app/legacy.css; nav en .jsx no .ejs

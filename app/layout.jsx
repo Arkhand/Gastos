@@ -4,12 +4,15 @@ import './legacy.css'
 import Providers from './providers.jsx'
 import RegisterSW from '../components/RegisterSW.jsx'
 
+// Metadata global (Next la inyecta en el <head>). `manifest` habilita la PWA.
 export const metadata = {
   title: 'Gastos',
   description: 'App de gastos familiar',
   manifest: '/manifest.webmanifest',
 }
 
+// `themeColor` coral pinta la barra del navegador/PWA; `viewportFit: cover` usa
+// toda la pantalla en móviles con notch.
 export const viewport = {
   themeColor: '#f2895f',
   width: 'device-width',
