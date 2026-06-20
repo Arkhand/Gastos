@@ -697,10 +697,10 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 }
 
 /* ---------- Configuración (categorías) ---------- */
-/* Sin padding-bottom grande: el tabbar va dentro del flex (margin-top:auto) y se
-   pega al fondo solo; un bottom extra dejaba un hueco con fondo bajo la barra. */
-.page-config { padding:20px 16px; }
-.config { max-width:760px; margin:0 auto; }
+/* No se sobrescribe el padding de .app-root (como hacen Resumen/Nosotros/Inicio en
+   mobile): así el tabbar se pega al fondo igual que en el resto. El padding del
+   contenido vive en el wrapper .config, que no envuelve al tabbar. */
+.config { max-width:760px; margin:0 auto; padding:4px 16px 16px; }
 .config h1 { font-family:var(--font-d); font-weight:700; font-size:26px; margin:6px 0 4px; }
 .cfg-intro { color:var(--ink-soft); font-size:14px; margin:0 0 16px; line-height:1.45; }
 .cfg-alert { padding:11px 14px; border-radius:14px; font-weight:700; font-size:14px; margin-bottom:16px; }
@@ -727,7 +727,7 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .cfg-edit-form { flex-basis:100%; margin-top:8px; padding-top:10px; border-top:1px dashed #ecdfce; }
 
 @media (min-width:900px) {
-  .page-config { padding:30px 38px 60px; }
+  .config { padding:30px 38px 60px; }
   .config h1 { font-size:30px; }
 }
 
