@@ -650,6 +650,10 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .cur-badge { font-size:10px; font-weight:800; letter-spacing:.4px; padding:2px 6px; border-radius:7px; }
 .cur-ars { background:#ffe3d6; color:var(--coral-deep); }
 .cur-usd { background:#cdeccf; color:var(--mint-deep); }
+/* Tipo de gasto en la tabla: compartido (entra al reparto) vs personal */
+.tipo-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:9px; font-family:var(--font-d); font-weight:600; font-size:12px; white-space:nowrap; }
+.tipo-comp { background:#ffe3d6; color:var(--coral-deep); }
+.tipo-pers { background:#e6d6f7; color:#6a3fa0; }
 .grp-row td { background:#f7efe4; padding:11px 14px; border-bottom:1px solid #ecdfce; }
 .grp-inner { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .grp-name { font-family:var(--font-d); font-weight:700; font-size:14px; display:flex; align-items:center; gap:9px; white-space:nowrap; }

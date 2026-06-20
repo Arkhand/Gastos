@@ -130,6 +130,7 @@
                   <th class="col-per">Persona</th>
                   <th>Descripción</th>
                   <th>Categoría</th>
+                  <th class="col-tipo">Tipo</th>
                   <th class="col-cargado">Cargado</th>
                   <th class="num">ARS</th>
                   <th class="num col-usd">USD</th>
@@ -310,11 +311,15 @@
   function rowHTML(r) {
     var badge = '<span class="cur-badge cur-' + (r.cur === 'USD' ? 'usd' : 'ars') + '">' + r.cur + '</span>'
     var cargado = (r.cur === 'USD' ? 'US$' : '$') + Math.round(r.amt).toLocaleString('es-AR')
+    var tipo = r.compartido
+      ? '<span class="tipo-chip tipo-comp">🤝 Compartido</span>'
+      : '<span class="tipo-chip tipo-pers">👤 Personal</span>'
     return '<tr>' +
       '<td class="td-date">' + esc(r.fechaLabel) + '</td>' +
       '<td class="col-per"><span class="per-cell"><span class="per-emoji">' + r.perEmoji + '</span>' + esc(r.perLabel) + '</span></td>' +
       '<td class="desc-cell">' + esc(r.desc) + '</td>' +
       '<td><span class="cat-chip cat-' + r.cat + '">' + r.catEmoji + ' ' + esc(r.catLabel) + '</span></td>' +
+      '<td class="col-tipo">' + tipo + '</td>' +
       '<td class="col-cargado"><span class="cargado"><span class="num">' + cargado + '</span>' + badge + '</span></td>' +
       '<td class="num">' + fmtARS(r.ars) + '</td>' +
       '<td class="num usd-col col-usd">' + fmtUSD(r.usd) + '</td>' +
@@ -326,7 +331,7 @@
     var f = rows[0]
     var label = state.grp === 'cat' ? f.catLabel : f.perLabel
     var emoji = state.grp === 'cat' ? f.catEmoji : f.perEmoji
-    return '<tr class="grp-row"><td colspan="8"><div class="grp-inner">' +
+    return '<tr class="grp-row"><td colspan="9"><div class="grp-inner">' +
       '<span class="grp-name">' + emoji + ' ' + esc(label) + ' <span class="grp-count">· ' + rows.length + ' mov.</span></span>' +
       '<span class="grp-tot"><span class="num">' + fmtARS(sumArs(rows)) + '</span><span class="num usd-col">' + fmtUSD(sumUsd(rows)) + '</span></span>' +
       '</div></td></tr>'
@@ -336,7 +341,7 @@
     var rows = filtered()
     var html = ''
     if (rows.length === 0) {
-      html = '<tr class="empty-row"><td colspan="8">Sin movimientos con estos filtros 🔍</td></tr>'
+      html = '<tr class="empty-row"><td colspan="9">Sin movimientos con estos filtros 🔍</td></tr>'
     } else if (state.grp === 'none') {
       rows.slice().sort(byFechaDesc).forEach(function (r) { html += rowHTML(r) })
     } else {
