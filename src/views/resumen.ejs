@@ -154,6 +154,14 @@
 
     <!-- ===== Vista: Gráficos (torta + barras por categoría) ===== -->
     <div class="vista <%= vista === 'graficos' ? 'is-on' : '' %>" id="vista-graficos">
+      <%# Toggle de tipo: filtra SOLO los gráficos (total, torta, ranking, por
+          persona). Navega con ?tipo= y el backend recalcula. Default compartidos. %>
+      <div class="segmented tipo-seg" id="tipo-seg">
+        <button type="button" class="seg-opt <%= tipo === 'compartidos' ? 'is-on' : '' %>" data-tipo="compartidos">🤝 Compartidos</button>
+        <button type="button" class="seg-opt <%= tipo === 'personales' ? 'is-on' : '' %>" data-tipo="personales">👤 Mis gastos</button>
+        <button type="button" class="seg-opt <%= tipo === 'todos' ? 'is-on' : '' %>" data-tipo="todos">Todos</button>
+      </div>
+
       <div class="res-total">
         <div class="res-total-label">Total del mes (ARS)</div>
         <div class="res-total-amount"><%= totalMes %></div>

@@ -288,6 +288,9 @@ export const resumen = async (req, res, next) => {
     const mesReq = String(req.query.mes || '')
     const mes = /^\d{4}-\d{2}$/.test(mesReq) && mesReq <= mesActual ? mesReq : mesActual
     const vista = req.query.vista === 'graficos' ? 'graficos' : 'gastos'
+    // Filtro de tipo para los GRÁFICOS (?tipo=). Solo afecta torta/ranking/totales,
+    // no la lista ni la tabla. compartidos (default) | personales (mis personales) | todos
+    const tipo = ['personales', 'todos'].includes(req.query.tipo) ? req.query.tipo : 'compartidos'
     // Meses cerrados (🤝): mapa mes -> foto del % congelado.
     const cierrePorMes = {}
     for (const c of cierres) cierrePorMes[c.mes] = c
@@ -300,8 +303,18 @@ export const resumen = async (req, res, next) => {
       .map((m) => ({ value: m, label: mesLabel(m), cerrado: !!cierrePorMes[m] }))
     // Gastos del mes elegido (sin fecha = cuenta como hoy).
     const gastosMes = gastos.filter((g) => (g.fecha || hoy).slice(0, 7) === mes)
+    // Base SOLO para los gráficos, filtrada por el toggle de tipo. La lista y la
+    // tabla siguen usando gastosMes (todos). "personales" = los míos (a mi nombre).
+    const miEmail = personaPorDefecto(req.user.email)
+    const gastosGraf = gastosMes.filter((g) =>
+      tipo === 'todos'
+        ? true
+        : tipo === 'personales'
+        ? g.compartido === false && normalizarPersona(g.a_nombre_de) === miEmail
+        : g.compartido !== false
+    )
     const porCat = {}
-    for (const g of gastosMes) {
+    for (const g of gastosGraf) {
       if (g.moneda !== 'ARS') continue
       // normalizarCategoria mapea null/categoría archivada/inexistente al id de
       // "Otros", así esos gastos suman a una fila visible (no se pierden del total)
@@ -329,9 +342,10 @@ export const resumen = async (req, res, next) => {
     })
     const colorOtros = catById(otrosId()).color_bg
     const pieGradient = stops.length ? `conic-gradient(${stops.join(', ')})` : colorOtros
-    // Total por persona (ARS y USD), sumando los montos convertidos del mes.
+    // Total por persona (ARS y USD), sumando los montos convertidos del mes. Es
+    // parte de los gráficos: usa la base filtrada por el toggle.
     const porPersona = {}
-    for (const g of gastosMes) {
+    for (const g of gastosGraf) {
       const id = normalizarPersona(g.a_nombre_de)
       if (!id) continue
       if (!porPersona[id]) porPersona[id] = { ars: 0, usd: 0 }
@@ -417,6 +431,7 @@ export const resumen = async (req, res, next) => {
       mes,
       meses,
       vista,
+      tipo,
       cierre,
       ok: req.query.ok || '',
       tab: 'stats',

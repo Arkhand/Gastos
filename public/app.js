@@ -790,13 +790,32 @@
     })
   }
 
+  // Lee un query param del Resumen con un default (vista, tipo, …).
+  function resumenParam(name, def) {
+    try { return new URL(window.location.href).searchParams.get(name) || def } catch (_) { return def }
+  }
+
   // ============ Resumen: selector de mes (solo meses con datos) ============
   var mesSelect = document.getElementById('mes-select')
   if (mesSelect) {
     mesSelect.addEventListener('change', function () {
-      var vista = 'gastos'
-      try { vista = new URL(window.location.href).searchParams.get('vista') || 'gastos' } catch (_) {}
-      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) + '&vista=' + vista
+      window.location.href = '/resumen?mes=' + encodeURIComponent(mesSelect.value) +
+        '&vista=' + resumenParam('vista', 'gastos') + '&tipo=' + resumenParam('tipo', 'compartidos')
+    })
+  }
+
+  // ============ Resumen: toggle de tipo de los GRÁFICOS ============
+  // Recarga con ?tipo= (el backend recalcula torta/ranking/totales). Se queda en
+  // la vista Gráficos, que es donde vive el toggle.
+  var tipoSeg = document.getElementById('tipo-seg')
+  if (tipoSeg) {
+    tipoSeg.addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-opt')
+      if (!b) return
+      var t = b.getAttribute('data-tipo')
+      var mes = resumenParam('mes', '')
+      window.location.href = '/resumen?' + (mes ? 'mes=' + encodeURIComponent(mes) + '&' : '') +
+        'vista=graficos&tipo=' + t
     })
   }
 })()
