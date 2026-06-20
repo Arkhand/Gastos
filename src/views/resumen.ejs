@@ -31,7 +31,7 @@
       <!-- MOBILE: filtros (buscar + persona) sobre la lista agrupada por día -->
       <% if (dbEnabled && grupos.length > 0) { %>
       <div class="mvm-filters">
-        <input class="ctl mvm-q" id="mvm-q" type="text" placeholder="Buscar… ej: súper, taxi" autocomplete="off" />
+        <input class="ctl mvm-q" id="mvm-q" type="text" placeholder="Buscar… ej: súper, taxi, 5000" autocomplete="off" />
         <div class="seg mvm-per" id="mvm-per">
           <button type="button" data-v="all" class="is-on">Todos</button>
           <% personas.forEach(function (p) { %>
@@ -409,10 +409,10 @@
   })
 
   render()
-})()
+})();
 
 // ===== MOBILE: filtros (buscar + persona) sobre la lista agrupada por día =====
-(function () {
+;(function () {
   var cont = document.querySelector('.gastos-mobile')
   var qEl = document.getElementById('mvm-q')
   var perSeg = document.getElementById('mvm-per')
@@ -422,17 +422,23 @@
   var state = { q: '', per: 'all' }
 
   function aplicar() {
-    var q = state.q.toLowerCase()
+    var q = state.q.toLowerCase().trim()
+    // Para buscar por monto: dejamos solo dígitos del query (ej. "5.000" -> "5000").
+    var qNum = q.replace(/[^0-9]/g, '')
     var filtrando = q !== '' || state.per !== 'all'
     var visibles = 0
-    // Mostrar/ocultar cada gasto según búsqueda + persona.
+    // Mostrar/ocultar cada gasto según búsqueda (descripción o monto) + persona.
     cont.querySelectorAll('.day-group').forEach(function (grupo) {
       var enGrupo = 0
       grupo.querySelectorAll('.exp-row').forEach(function (row) {
         var desc = (row.getAttribute('data-descripcion') || '').toLowerCase()
         var per = row.getAttribute('data-nombre') || ''
-        var ok = (state.per === 'all' || per === state.per) &&
-                 (q === '' || desc.indexOf(q) > -1)
+        // Monto crudo sin separadores ni decimales (ej. "5000.5" -> "5000").
+        var monto = (row.getAttribute('data-monto') || '').split('.')[0].replace(/[^0-9]/g, '')
+        var matchTexto = q === '' ||
+          desc.indexOf(q) > -1 ||
+          (qNum !== '' && monto.indexOf(qNum) > -1)
+        var ok = (state.per === 'all' || per === state.per) && matchTexto
         row.style.display = ok ? '' : 'none'
         if (ok) { enGrupo++; visibles++ }
       })
