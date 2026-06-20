@@ -13,6 +13,23 @@ import { normalizarPersona, personaPorDefecto } from '../../../lib/personas.js'
 import { normalizarCategoria, otrosId, recargarCategorias } from '../../../lib/categorias.js'
 import { hoyAR } from '../../../lib/fecha.js'
 
+// Normaliza una fila cruda de `categorias` a la forma que usa la UI: agrega `label`
+// (alias de nombre) y defaults de emoji/color. Sin esto, el cliente (que usa
+// c.label) mostraba opciones vacías en el desplegable de categoría.
+function catParaVista(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    label: row.nombre,
+    emoji: row.emoji || '✨',
+    color_bg: row.color_bg || '#e3e0ea',
+    color_ink: row.color_ink || '#5a5570',
+    hint: row.hint || '',
+    es_otros: !!row.es_otros,
+    eliminado: !!row.eliminado,
+  }
+}
+
 // GET /api/gastos?mes=YYYY-MM
 // Devuelve los datos CRUDOS que la UI necesita para un mes: gastos del mes +
 // categorías + división + cierres + cotización. El cliente hace los cálculos de
@@ -43,8 +60,8 @@ export async function GET(request) {
       mesActual,
       hoy,
       gastos, // TODOS los activos; el cliente filtra por mes/tipo/persona
-      categorias: categorias.filter((c) => !c.eliminado),
-      categoriasTodas: categorias, // para la pantalla de config (incluye archivadas)
+      categorias: categorias.filter((c) => !c.eliminado).map(catParaVista),
+      categoriasTodas: categorias.map(catParaVista), // incluye archivadas (para lookups)
       division,
       cierres,
       cotizacion,
