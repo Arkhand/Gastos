@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 // Barra lateral (desktop). Portado de partials/sidebar.ejs.
 const ITEMS = [
@@ -12,6 +13,11 @@ const ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [pending, setPending] = useState(null)
+  useEffect(() => { setPending(null) }, [pathname])
+  useEffect(() => { ITEMS.forEach((it) => router.prefetch(it.href)) }, [router])
+  const actual = pending || pathname
   return (
     <aside className="app-sidebar">
       <div className="dk-brand">
@@ -21,7 +27,7 @@ export default function Sidebar() {
 
       <nav className="dk-nav">
         {ITEMS.map((it) => (
-          <Link key={it.href} className={`dk-nav-item ${it.match(pathname) ? 'is-on' : ''}`} href={it.href}>
+          <Link key={it.href} className={`dk-nav-item ${it.match(actual) ? 'is-on' : ''}`} href={it.href} prefetch onClick={() => setPending(it.href)}>
             <svg viewBox="0 0 24 24" fill="none">{it.icon}</svg>
             {it.label}
           </Link>

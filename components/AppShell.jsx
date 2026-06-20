@@ -1,6 +1,7 @@
 import Sidebar from './Sidebar.jsx'
 import TabBar from './TabBar.jsx'
 import CatColors from './CatColors.jsx'
+import Prefetch from './Prefetch.jsx'
 
 // Envoltura de las pantallas privadas: sidebar (desktop) + contenido + tabbar
 // (mobile). Replica la estructura app-shell > sidebar + app-root de las vistas.
@@ -8,6 +9,7 @@ import CatColors from './CatColors.jsx'
 export default function AppShell({ children, pageClass = '' }) {
   return (
     <div className="app-shell">
+      <Prefetch />
       <CatColors />
       <Sidebar />
       <div className={`app-root ${pageClass}`}>

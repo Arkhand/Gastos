@@ -1,19 +1,18 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 // Barra de pestañas inferior (mobile). Portado de partials/tabbar.ejs.
 const TABS = [
   {
     href: '/inicio',
     label: 'Cargar',
-    match: (p) => p === '/inicio',
     icon: <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />,
   },
   {
     href: '/resumen',
     label: 'Resumen',
-    match: (p) => p.startsWith('/resumen'),
     icon: (
       <>
         <rect x="4" y="12" width="4" height="7" rx="1.2" fill="currentColor" />
@@ -25,13 +24,11 @@ const TABS = [
   {
     href: '/nosotros',
     label: 'Nosotros',
-    match: (p) => p === '/nosotros',
     icon: <path d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />,
   },
   {
     href: '/config',
     label: 'Configuración',
-    match: (p) => p.startsWith('/config'),
     icon: (
       <>
         <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.8" />
@@ -41,12 +38,37 @@ const TABS = [
   },
 ]
 
+function activo(pathname, href) {
+  return href === '/inicio' ? pathname === '/inicio' : pathname.startsWith(href)
+}
+
 export default function TabBar() {
   const pathname = usePathname()
+  const router = useRouter()
+  // Destino "optimista": al tocar, marcamos ese tab YA (sin esperar la navegación),
+  // así el feedback de pestaña activa es instantáneo. Se sincroniza al llegar.
+  const [pending, setPending] = useState(null)
+  useEffect(() => {
+    setPending(null) // la navegación terminó: el pathname real manda
+  }, [pathname])
+
+  // Prefetch de todas las pestañas al montar: el tap luego es casi instantáneo.
+  useEffect(() => {
+    TABS.forEach((t) => router.prefetch(t.href))
+  }, [router])
+
+  const actual = pending || pathname
+
   return (
     <nav className="tabbar">
       {TABS.map((t) => (
-        <Link key={t.href} className={`tab ${t.match(pathname) ? 'tab-on' : ''}`} href={t.href}>
+        <Link
+          key={t.href}
+          className={`tab ${activo(actual, t.href) ? 'tab-on' : ''}`}
+          href={t.href}
+          prefetch
+          onClick={() => setPending(t.href)}
+        >
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
             {t.icon}
           </svg>
