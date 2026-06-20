@@ -14,7 +14,11 @@
   <span class="exp-emoji cat-<%= c.id %>"><%= c.emoji %></span>
   <span class="exp-mid">
     <span class="exp-desc"><%= g.descripcion %></span>
-    <span class="exp-cat"><% if (pl) { %><%= pl %> · <% } %><%= c.label %></span>
+    <span class="exp-cat">
+      <% if (pl) { %><%= pl %> · <% } %><%= c.label %>
+      <%# Marca solo los personales (los compartidos son el caso normal, sin chip). %>
+      <% if (g.compartido === false) { %><span class="tipo-chip tipo-pers">👤 Personal</span><% } %>
+    </span>
   </span>
   <span class="exp-amount"><%= fmt(g.moneda, g.monto) %></span>
   <% if (typeof editable !== 'undefined' && editable) { %>
