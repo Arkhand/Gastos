@@ -808,3 +808,51 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .cierre-foot { font-family:var(--font-d); font-size:12px; color:var(--ink-soft); margin:12px 0 8px; }
 .cierre-btn { width:100%; }
 .cierre-form { margin-top:4px; }
+
+/* =========================================================
+   SPLASH PWA (pantalla de bienvenida animada al abrir la app)
+   Solo se monta cuando corre como PWA instalada (ver SplashScreen.jsx).
+   Reusa la mascota Chubi (.chubi) que ya flota con su animación propia.
+   ========================================================= */
+.splash {
+  position:fixed; inset:0; z-index:9999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  /* Mismo coral del theme/manifest para continuidad con el splash nativo */
+  background:linear-gradient(165deg,#ffa178,#ef7c4f);
+  /* Aparece de una; al terminar la carga se desvanece con la clase .splash-out */
+  animation:splashIn .35s ease both;
+  /* Por encima de notch en móviles */
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.splash-out { animation:splashOut .45s ease forwards; pointer-events:none; }
+
+/* Chubi entra con un pop suave; su flotar (chubiBob) sigue corriendo por debajo */
+.splash .chubi { animation:splashPop .55s cubic-bezier(.34,1.56,.64,1) both; }
+
+.splash-title {
+  font-family:var(--font-d); font-weight:700; font-size:30px; letter-spacing:.3px;
+  color:#fff; text-shadow:0 3px 10px rgba(160,60,30,.28);
+  opacity:0; animation:splashTitle .5s ease .25s both;
+}
+.splash-sub {
+  font-family:var(--font-n); font-weight:600; font-size:14px;
+  color:rgba(255,255,255,.92); margin-top:-8px;
+  opacity:0; animation:splashTitle .5s ease .4s both;
+}
+
+@keyframes splashIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes splashOut { to { opacity:0; transform:scale(1.04); } }
+@keyframes splashPop {
+  0%   { transform:scale(.55) translateY(14px); opacity:0; }
+  60%  { transform:scale(1.06) translateY(0);   opacity:1; }
+  100% { transform:scale(1) translateY(0);      opacity:1; }
+}
+@keyframes splashTitle {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Si el usuario pidió menos movimiento, mantenemos la pantalla pero sin saltos */
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splash .chubi, .splash-title, .splash-sub { animation-duration:.01ms !important; }
+}

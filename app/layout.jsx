@@ -3,6 +3,7 @@
 import './legacy.css'
 import Providers from './providers.jsx'
 import RegisterSW from '../components/RegisterSW.jsx'
+import SplashScreen from '../components/SplashScreen.jsx'
 
 // Metadata global (Next la inyecta en el <head>). `manifest` habilita la PWA.
 export const metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
       <body>
         <Providers>{children}</Providers>
         <RegisterSW />
+        <SplashScreen />
       </body>
     </html>
   )

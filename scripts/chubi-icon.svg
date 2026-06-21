@@ -1,0 +1,73 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Fondo coral (mismo theme_color de la app) -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffa178"/>
+      <stop offset="1" stop-color="#ef7c4f"/>
+    </linearGradient>
+    <!-- Cuerpo de Chubi (mismos tonos durazno del CSS) -->
+    <linearGradient id="body" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffd9b0"/>
+      <stop offset="1" stop-color="#f7a572"/>
+    </linearGradient>
+    <radialGradient id="cheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f59f8c"/>
+      <stop offset="1" stop-color="#f59f8c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="bodyShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#c95f33" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <!-- Lienzo: el SO recorta a las esquinas; dejamos área segura para maskable -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Brillos de fondo (sparks suaves) -->
+  <g fill="#fff" opacity="0.5">
+    <path d="M120 150 l8 16 16 8 -16 8 -8 16 -8 -16 -16 -8 16 -8z"/>
+  </g>
+  <g fill="#ffe3a3" opacity="0.85">
+    <path d="M398 130 l6 13 13 6 -13 6 -6 13 -6 -13 -13 -6 13 -6z"/>
+    <path d="M410 360 l5 10 10 5 -10 5 -5 10 -5 -10 -10 -5 10 -5z"/>
+  </g>
+
+  <g transform="translate(256 268)" filter="url(#bodyShadow)">
+    <!-- Pies -->
+    <ellipse cx="-44" cy="118" rx="34" ry="20" fill="#ec8c5f"/>
+    <ellipse cx="44"  cy="118" rx="34" ry="20" fill="#ec8c5f"/>
+
+    <!-- Brazos -->
+    <g fill="#f3925f">
+      <ellipse cx="-118" cy="14" rx="26" ry="40" transform="rotate(20 -118 14)"/>
+      <ellipse cx="118"  cy="14" rx="26" ry="40" transform="rotate(-20 118 14)"/>
+    </g>
+
+    <!-- Cuerpo (blob redondeado, mismo border-radius del CSS aproximado) -->
+    <path d="M0 -132
+             C 72 -132 118 -86 118 -10
+             C 118 78 70 128 0 128
+             C -70 128 -118 78 -118 -10
+             C -118 -86 -72 -132 0 -132 Z"
+          fill="url(#body)"/>
+    <!-- Sombra interna inferior derecha -->
+    <path d="M0 128 C 70 128 118 78 118 -10 C 118 40 96 96 30 120 C 18 124 9 126 0 128 Z"
+          fill="#d67846" opacity="0.16"/>
+
+    <!-- Cachetes -->
+    <ellipse cx="-72" cy="34" rx="26" ry="18" fill="url(#cheek)"/>
+    <ellipse cx="72"  cy="34" rx="26" ry="18" fill="url(#cheek)"/>
+
+    <!-- Ojos -->
+    <g>
+      <ellipse cx="-34" cy="-8" rx="30" ry="32" fill="#fff"/>
+      <ellipse cx="34"  cy="-8" rx="30" ry="32" fill="#fff"/>
+      <circle cx="-30" cy="-2" r="14" fill="#3c2f29"/>
+      <circle cx="38"  cy="-2" r="14" fill="#3c2f29"/>
+      <circle cx="-25" cy="-7" r="5" fill="#fff"/>
+      <circle cx="43"  cy="-7" r="5" fill="#fff"/>
+    </g>
+
+    <!-- Boca (sonrisa) -->
+    <path d="M-24 48 Q 0 84 24 48 Z" fill="#a64d3c"/>
+  </g>
+</svg>
