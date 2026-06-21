@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import AppShell from '../../../components/AppShell.jsx'
 import Sheet from '../../../components/Sheet.jsx'
 import GastoRow from '../../../components/GastoRow.jsx'
+import LoadingDots from '../../../components/LoadingDots.jsx'
 import { useGastos, useCerrarMes } from '../../../lib/api.js'
 import { useToast } from '../../../components/Toasts.jsx'
 import {
@@ -23,7 +24,7 @@ export default function ResumenClient({ personaDefault }) {
   const [mes, setMes] = useState(mesActual)
   const [vista, setVista] = useState('gastos') // gastos | graficos
   const [tipo, setTipo] = useState('compartidos') // gráficos: compartidos | personales | todos
-  const { data } = useGastos(mes)
+  const { data, isLoading } = useGastos(mes)
   const cerrar = useCerrarMes()
   const toast = useToast()
 
@@ -181,6 +182,10 @@ export default function ResumenClient({ personaDefault }) {
 
         {/* ===== Vista Gastos ===== */}
         <div className={`vista ${vista === 'gastos' ? 'is-on' : ''}`}>
+          {isLoading ? (
+            <LoadingDots label="Cargando gastos…" />
+          ) : (
+          <>
           {/* MOBILE: filtros */}
           {grupos.length > 0 && (
             <div className="mvm-filters">
@@ -201,10 +206,16 @@ export default function ResumenClient({ personaDefault }) {
 
           {/* DESKTOP: tabla */}
           <TablaDesktop movs={movs} onEdit={(id) => editar(gastosMes.find((g) => g.id === id))} />
+          </>
+          )}
         </div>
 
         {/* ===== Vista Gráficos ===== */}
         <div className={`vista ${vista === 'graficos' ? 'is-on' : ''}`}>
+          {isLoading ? (
+            <LoadingDots label="Cargando gráficos…" />
+          ) : (
+          <>
           <div className="segmented tipo-seg">
             <button type="button" className={`seg-opt ${tipo === 'compartidos' ? 'is-on' : ''}`} onClick={() => setTipo('compartidos')}>🤝 Compartidos</button>
             <button type="button" className={`seg-opt ${tipo === 'personales' ? 'is-on' : ''}`} onClick={() => setTipo('personales')}>👤 Mis gastos</button>
@@ -307,6 +318,8 @@ export default function ResumenClient({ personaDefault }) {
                 ))}
               </div>
             </>
+          )}
+          </>
           )}
         </div>
       </div>

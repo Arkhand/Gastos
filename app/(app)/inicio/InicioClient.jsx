@@ -4,6 +4,7 @@ import AppShell from '../../../components/AppShell.jsx'
 import Mic from '../../../components/Mic.jsx'
 import Sheet from '../../../components/Sheet.jsx'
 import GastoRow from '../../../components/GastoRow.jsx'
+import LoadingDots from '../../../components/LoadingDots.jsx'
 import { useGastos, useCrearGasto } from '../../../lib/api.js'
 import { useToast } from '../../../components/Toasts.jsx'
 import { agruparPorDia, sugerenciasDescripcion, fmtMonto, hacerCatLookup } from '../../../lib/calculos.js'
@@ -12,7 +13,7 @@ import { hoyAR } from '../../../lib/fecha.js'
 
 export default function InicioClient({ personaDefault }) {
   const mesActual = hoyAR().slice(0, 7)
-  const { data } = useGastos(mesActual)
+  const { data, isLoading } = useGastos(mesActual)
   const crear = useCrearGasto()
   const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -114,7 +115,9 @@ export default function InicioClient({ personaDefault }) {
 
         <section className="recent">
           <div className="recent-head">Últimos gastos</div>
-          {grupos.length === 0 ? (
+          {isLoading ? (
+            <LoadingDots label="Cargando gastos…" />
+          ) : grupos.length === 0 ? (
             <div className="recent-empty">Sin gastos todavía. Tocá el micrófono o el ➕ para cargar el primero.</div>
           ) : (
             grupos.map((grupo) => (

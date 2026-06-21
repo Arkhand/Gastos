@@ -91,6 +91,13 @@ a { color:inherit; }
 .recent { padding:14px 18px 120px; }
 .recent-head { font-family:var(--font-d); font-weight:600; font-size:18px; margin:4px 6px 10px; }
 .recent-empty { background:var(--card); border-radius:22px; padding:22px; text-align:center; color:var(--ink-soft); box-shadow:0 6px 16px rgba(120,90,60,.08); }
+/* Carga: puntitos que suben y bajan como una olita (mientras llegan los datos). */
+.loading-wave { background:var(--card); border-radius:22px; padding:30px 22px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(120,90,60,.08); }
+.loading-dots { display:flex; gap:8px; align-items:flex-end; }
+.loading-dot { width:10px; height:10px; border-radius:50%; background:var(--coral); animation:loadingWave 1.1s ease-in-out infinite; }
+.loading-dot:nth-child(2){ animation-delay:.18s } .loading-dot:nth-child(3){ animation-delay:.36s }
+@keyframes loadingWave { 0%,100%{transform:translateY(0);opacity:.45} 40%{transform:translateY(-9px);opacity:1} }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
 .day-group { margin-bottom:14px; }
 .day-row { display:flex; justify-content:space-between; padding:0 8px 6px; }
 .day-label { font-weight:800; font-size:13px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.4px; }
