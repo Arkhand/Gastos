@@ -61,7 +61,9 @@ export default function InicioClient({ personaDefault }) {
         a_nombre_de: g.persona || personaDefault,
         categoria: g.categoria || otrosId,
         fecha: g.fecha || null,
-        compartido: true, // la voz siempre es compartido
+        // La voz es compartida salvo que la frase diga que es personal ("gastos
+        // personales"), en cuyo caso la IA devuelve compartido=false.
+        compartido: g.compartido !== false,
       })
       const creado = r?.gasto
       const msg = personaIncierta ? 'Guardado a tu nombre ✓' : 'Gasto guardado ✓'
@@ -81,7 +83,7 @@ export default function InicioClient({ personaDefault }) {
       a_nombre_de: g.persona || personaDefault,
       categoria: g.categoria || otrosId,
       fecha: g.fecha || '',
-      compartido: true,
+      compartido: g.compartido !== false,
     })
     setSheetOpen(true)
   }
