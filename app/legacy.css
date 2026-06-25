@@ -797,6 +797,21 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .cfg-div-suma.cfg-div-ok #cfg-div-total, .cfg-div-suma.cfg-div-ok { color:#2f7d46; }
 .cfg-div-suma.cfg-div-bad, .cfg-div-suma.cfg-div-bad #cfg-div-total { color:var(--coral-deep); }
 
+/* Estado de la IA de voz: una card por modelo, en orden de consumo */
+.ia-refresh { width:auto; padding:8px 18px; margin:0 0 16px; }
+.ia-row { display:flex; align-items:flex-start; gap:12px; }
+.ia-orden { flex:0 0 auto; width:26px; height:26px; border-radius:50%; background:#f0e6d9; color:var(--coral-deep); font-family:var(--font-d); font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; }
+.ia-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.ia-nombre { margin:0; word-break:break-word; }
+.ia-badge { align-self:flex-start; font-family:var(--font-d); font-weight:700; font-size:13px; border-radius:12px; padding:4px 10px; white-space:nowrap; }
+.ia-badge-ok { color:#2f7d46; background:#cdeccf; }
+.ia-badge-err { color:var(--coral-deep); background:#ffd9cf; }
+.ia-cuota { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:14px; color:var(--ink); }
+.ia-cuota strong { font-family:var(--font-d); }
+.ia-reset { color:var(--ink-soft); font-size:12px; }
+.ia-nota { margin:12px 0 0; font-size:13px; color:var(--ink-soft); line-height:1.4; }
+.ia-error { margin:12px 0 0; font-size:13px; color:var(--coral-deep); word-break:break-word; }
+
 /* ===== Cierre / ajuste de cuentas (Resumen) ===== */
 .mes-cerrado-flag { font-size:.8em; }
 .cierre-card { }

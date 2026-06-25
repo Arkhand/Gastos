@@ -26,6 +26,14 @@ export default function ConfigMenuPage() {
             </span>
             <span className="cfg-menu-arrow">›</span>
           </Link>
+          <Link className="cfg-menu-item" href="/config/ia">
+            <span className="cfg-menu-ico">🎙️</span>
+            <span className="cfg-menu-txt">
+              <span className="cfg-menu-name">Estado de la IA</span>
+              <span className="cfg-menu-sub">Si funciona la voz y cuántos mensajes quedan</span>
+            </span>
+            <span className="cfg-menu-arrow">›</span>
+          </Link>
         </nav>
       </div>
     </AppShell>
