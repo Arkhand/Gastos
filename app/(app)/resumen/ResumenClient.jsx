@@ -18,6 +18,7 @@ import {
 } from '../../../lib/calculos.js'
 import { PERSONAS, personaLabel, normalizarPersona } from '../../../lib/personas.js'
 import { hoyAR, mesLabel } from '../../../lib/fecha.js'
+import { descargarExcel } from '../../../lib/exportar.js'
 
 export default function ResumenClient({ personaDefault }) {
   const mesActual = hoyAR().slice(0, 7)
@@ -172,6 +173,15 @@ export default function ResumenClient({ personaDefault }) {
               <option key={m.value} value={m.value}>{m.cerrado ? '🤝 ' : ''}{m.label}</option>
             ))}
           </select>
+          <button
+            type="button"
+            className="btn-excel"
+            onClick={() => descargarExcel(movs, mes, mesLabel(mes))}
+            disabled={movs.length === 0}
+            title="Descargar los gastos del mes en Excel"
+          >
+            ⬇️ Excel
+          </button>
         </div>
 
         {/* Toggle Gastos / Gráficos */}
@@ -373,6 +383,7 @@ function TablaDesktop({ movs, onEdit }) {
   const [per, setPer] = useState('all')
   const [cat, setCat] = useState('all')
   const [cur, setCur] = useState('all')
+  const [tipo, setTipo] = useState('all') // all | comp | pers
   const [grp, setGrp] = useState('none') // agrupación: none | cat | per
 
   // Categorías presentes en el mes (para poblar el desplegable de filtro).
@@ -389,9 +400,10 @@ function TablaDesktop({ movs, onEdit }) {
         (per === 'all' || r.per === per) &&
         (cat === 'all' || r.cat === cat) &&
         (cur === 'all' || r.cur === cur) &&
+        (tipo === 'all' || (tipo === 'comp' ? r.compartido : !r.compartido)) &&
         (q === '' || r.desc.toLowerCase().indexOf(q.toLowerCase()) > -1)
     )
-  }, [movs, per, cat, cur, q])
+  }, [movs, per, cat, cur, tipo, q])
 
   // Helpers de formato y suma (ARS/USD se totalizan por separado). `byFecha`
   // ordena de más nuevo a más viejo. `tArs`/`tUsd` = totales de las filas visibles.
@@ -453,8 +465,9 @@ function TablaDesktop({ movs, onEdit }) {
   }
 
   function limpiar() {
-    setQ(''); setPer('all'); setCat('all'); setCur('all'); setGrp('none')
+    setQ(''); setPer('all'); setCat('all'); setCur('all'); setTipo('all'); setGrp('none')
   }
+  const hayFiltros = q !== '' || per !== 'all' || cat !== 'all' || cur !== 'all' || tipo !== 'all'
 
   return (
     <div className="gastos-desktop">
@@ -465,33 +478,8 @@ function TablaDesktop({ movs, onEdit }) {
         <div className="mv-kpi"><div className="mv-kpi-label">Promedio</div><div className="mv-kpi-val">{fmtARS(rows.length ? tArs / rows.length : 0)}</div><div className="mv-kpi-sub">por movimiento</div></div>
       </div>
 
-      <div className="mv-filters">
-        <div className="filt filt-search">
-          <label>Buscar</label>
-          <input className="ctl" type="text" placeholder="Descripción… ej: súper, taxi, farmacia" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <div className="filt">
-          <label>Persona</label>
-          <div className="seg">
-            <button type="button" className={per === 'all' ? 'is-on' : ''} onClick={() => setPer('all')}>Todos</button>
-            {PERSONAS.map((p) => <button key={p.id} type="button" className={per === p.id ? 'is-on' : ''} onClick={() => setPer(p.id)}>{p.emoji} {p.label}</button>)}
-          </div>
-        </div>
-        <div className="filt">
-          <label>Categoría</label>
-          <select className="ctl" value={cat} onChange={(e) => setCat(e.target.value)}>
-            <option value="all">Todas</option>
-            {catsUnicas.map((c) => <option key={c.id} value={c.id}>{c.emoji}  {c.label}</option>)}
-          </select>
-        </div>
-        <div className="filt">
-          <label>Moneda</label>
-          <select className="ctl" value={cur} onChange={(e) => setCur(e.target.value)}>
-            <option value="all">Todas</option>
-            <option value="ARS">Pesos (ARS)</option>
-            <option value="USD">Dólares (USD)</option>
-          </select>
-        </div>
+      <div className="mv-filters mv-filters-slim">
+        <div className="mv-filters-hint">Filtrá desde los títulos de cada columna ↓</div>
         <div className="filt-right">
           <div className="filt">
             <label>Agrupar</label>
@@ -501,7 +489,7 @@ function TablaDesktop({ movs, onEdit }) {
               <button type="button" className={grp === 'per' ? 'is-on' : ''} onClick={() => setGrp('per')}>Persona</button>
             </div>
           </div>
-          <button className="mv-clear" type="button" onClick={limpiar}>Limpiar</button>
+          <button className="mv-clear" type="button" onClick={limpiar} disabled={!hayFiltros && grp === 'none'}>Limpiar</button>
         </div>
       </div>
 
@@ -511,11 +499,50 @@ function TablaDesktop({ movs, onEdit }) {
             <thead>
               <tr>
                 <th>Fecha</th>
-                <th className="col-per">Persona</th>
-                <th>Descripción</th>
-                <th>Categoría</th>
-                <th className="col-tipo">Tipo</th>
-                <th className="col-cargado">Cargado</th>
+                <th className="col-per">
+                  <div className="th-col">
+                    <span className="th-name">Persona</span>
+                    <select className={`th-ctl ${per !== 'all' ? 'is-active' : ''}`} value={per} onChange={(e) => setPer(e.target.value)} aria-label="Filtrar por persona">
+                      <option value="all">Todas</option>
+                      {PERSONAS.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>)}
+                    </select>
+                  </div>
+                </th>
+                <th>
+                  <div className="th-col">
+                    <span className="th-name">Descripción</span>
+                    <input className={`th-ctl ${q !== '' ? 'is-active' : ''}`} type="text" placeholder="Buscar…" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filtrar por descripción" />
+                  </div>
+                </th>
+                <th>
+                  <div className="th-col">
+                    <span className="th-name">Categoría</span>
+                    <select className={`th-ctl ${cat !== 'all' ? 'is-active' : ''}`} value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Filtrar por categoría">
+                      <option value="all">Todas</option>
+                      {catsUnicas.map((c) => <option key={c.id} value={c.id}>{c.emoji}  {c.label}</option>)}
+                    </select>
+                  </div>
+                </th>
+                <th className="col-tipo">
+                  <div className="th-col">
+                    <span className="th-name">Tipo</span>
+                    <select className={`th-ctl ${tipo !== 'all' ? 'is-active' : ''}`} value={tipo} onChange={(e) => setTipo(e.target.value)} aria-label="Filtrar por tipo">
+                      <option value="all">Todos</option>
+                      <option value="comp">🤝 Compartido</option>
+                      <option value="pers">👤 Personal</option>
+                    </select>
+                  </div>
+                </th>
+                <th className="col-cargado">
+                  <div className="th-col">
+                    <span className="th-name">Cargado</span>
+                    <select className={`th-ctl ${cur !== 'all' ? 'is-active' : ''}`} value={cur} onChange={(e) => setCur(e.target.value)} aria-label="Filtrar por moneda">
+                      <option value="all">Todas</option>
+                      <option value="ARS">Pesos (ARS)</option>
+                      <option value="USD">Dólares (USD)</option>
+                    </select>
+                  </div>
+                </th>
                 <th className="num">ARS</th>
                 <th className="num col-usd">USD</th>
                 <th aria-label="Editar"></th>
