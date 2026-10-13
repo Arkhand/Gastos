@@ -11,9 +11,14 @@ test('sin pedido: pide si nunca bajó o pasó 1 hora', () => {
   assert.equal(accionReporte({ report_downloaded_at: hace(61) }, T), 'pedir')
 })
 
-test('con pedido reciente: intenta bajar; pedido perdido (>15 min): vuelve a pedir', () => {
+test('con pedido reciente: intenta bajar; pedido perdido (>40 min): vuelve a pedir', () => {
   assert.equal(accionReporte({ report_requested_at: hace(5), report_downloaded_at: hace(70) }, T), 'bajar')
-  assert.equal(accionReporte({ report_requested_at: hace(16) }, T), 'pedir')
+  assert.equal(accionReporte({ report_requested_at: hace(41) }, T), 'pedir')
+})
+
+test('la corrida siguiente del cron (15 min + latencia) baja, no vuelve a pedir', () => {
+  const pedido = new Date(T - 15 * 60_000 - 2_000).toISOString()
+  assert.equal(accionReporte({ report_requested_at: pedido }, T), 'bajar')
 })
 
 test('rango: 3 días terminando 10 minutos antes, en UTC sin milisegundos', () => {

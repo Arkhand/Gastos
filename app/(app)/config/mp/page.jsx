@@ -9,6 +9,7 @@ import { useMpCuenta, useConectarMpToken, useDesconectarMp } from '../../../../l
 const ERRORES = {
   autorizacion: 'Mercado Pago no confirmó la autorización. Probá de nuevo.',
   canje: 'No se pudo completar la conexión con Mercado Pago.',
+  'cuenta-ajena': 'Esa cuenta de Mercado Pago ya está conectada por otra persona.',
   'oauth-no-disponible': 'La conexión con el botón no está configurada; pegá un Access Token.',
 }
 

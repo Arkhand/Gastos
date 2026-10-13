@@ -21,6 +21,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${origin}/config/mp?ok=1`)
   } catch (err) {
     console.error('[api/mp/callback]', err.message)
-    return NextResponse.redirect(`${origin}/config/mp?error=canje`)
+    return NextResponse.redirect(`${origin}/config/mp?error=${err.code === 'cuenta-ajena' ? 'cuenta-ajena' : 'canje'}`)
   }
 }

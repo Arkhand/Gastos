@@ -14,6 +14,7 @@ import { normalizarCategoria, otrosId, recargarCategorias } from '../../../lib/c
 import { hoyAR } from '../../../lib/fecha.js'
 import { dbMp } from '../../../lib/mp/db.js'
 import { ownerDe } from '../../../lib/mp/cuentas.js'
+import { agregarDesdeMp } from '../../../lib/mp/agregar.js'
 
 // Normaliza una fila cruda de `categorias` a la forma que usa la UI: agrega `label`
 // (alias de nombre) y defaults de emoji/color. Sin esto, el cliente (que usa
@@ -91,14 +92,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Descripción y monto válidos son obligatorios' }, { status: 400 })
     }
 
-    // Alta desde un pendiente de Mercado Pago: tiene que ser del usuario y seguir
-    // pendiente (evita duplicar ante doble tap).
-    const owner = ownerDe(user)
-    const mov = body.mp_id ? await dbMp.leerMovimiento(owner, String(body.mp_id)) : null
-    if (body.mp_id && mov?.estado !== 'pendiente') {
-      return NextResponse.json({ error: 'Ese movimiento ya se procesó' }, { status: 409 })
-    }
-
     const rate = await obtenerCotizacion()
     const datos = {
       descripcion: String(body.descripcion),
@@ -110,24 +103,25 @@ export async function POST(request) {
       compartido: String(body.compartido) !== 'false',
       ...convertirMontos(body.moneda, montoNum, rate),
     }
-    const nuevo = await crearGasto(user.id, user.displayName, datos)
-    if (mov) {
-      // El gasto ya existe: si marcar falla no se rompe el alta; el próximo listado
-      // lo ofrece como "¿Ya lo cargaste?" y se vincula con un toque.
-      try {
-        await dbMp.marcar(owner, mov.id, { estado: 'agregado', motivo: null, gasto_id: nuevo.id })
-        if (mov.contacto_id) {
-          const nombre = String(body.mp_contacto_nombre ?? '').trim()
-          await dbMp.guardarContacto(owner, mov.contacto_id, {
-            nombre: nombre || undefined,
-            categoria: datos.categoria,
-            compartido: datos.compartido,
-          })
-        }
-      } catch (e) {
-        console.error('[api/gastos POST] marcar mp', e.message)
-      }
+    const crear = () => crearGasto(user.id, user.displayName, datos)
+
+    // Alta desde un pendiente de Mercado Pago: reserva el movimiento antes de crear
+    // el gasto (dos requests a la vez → uno solo crea, el otro 409).
+    if (body.mp_id) {
+      const r = await agregarDesdeMp({
+        owner: ownerDe(user),
+        mpId: String(body.mp_id),
+        db: dbMp,
+        crearGasto: crear,
+        contactoNombre: body.mp_contacto_nombre,
+        datos,
+      })
+      if (r.status === 404) return NextResponse.json({ error: 'Movimiento no encontrado' }, { status: 404 })
+      if (r.status === 409) return NextResponse.json({ error: 'Ese movimiento ya se procesó' }, { status: 409 })
+      return NextResponse.json({ ok: true, gasto: r.gasto })
     }
+
+    const nuevo = await crear()
     return NextResponse.json({ ok: true, gasto: nuevo })
   } catch (err) {
     const status = err.status || 500

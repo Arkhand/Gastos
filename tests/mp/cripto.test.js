@@ -24,7 +24,9 @@ test('con otra clave falla', () => {
 
 test('si se altera el blob falla', () => {
   const [iv, tag, datos] = cifrar(TOKEN, KEY).split('.')
-  const alterado = [iv, tag, datos.slice(0, -2) + (datos.endsWith('A') ? 'BB' : 'AA')].join('.')
+  // Se altera el PRIMER carácter: el último base64 lleva bits de relleno que se
+  // descartan al decodificar (cambiarlo puede no cambiar ningún byte).
+  const alterado = [iv, tag, (datos[0] === 'A' ? 'B' : 'A') + datos.slice(1)].join('.')
   assert.throws(() => descifrar(alterado, KEY))
 })
 
