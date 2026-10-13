@@ -82,10 +82,11 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
       const abierta = ventanas.find((w) => new URL(w.url).origin === self.location.origin)
       if (!abierta) return self.clients.openWindow(url)
-      // navigate() falla en ventanas que este SW no controla: ahí abrimos una nueva.
+      // Primero focus (Chrome permite traer la app al frente solo unos segundos después
+      // del toque) y después navigate; si falla (ventana no controlada), una nueva.
       return abierta
-        .navigate(url)
-        .then((w) => (w || abierta).focus())
+        .focus()
+        .then((w) => (w || abierta).navigate(url))
         .catch(() => self.clients.openWindow(url))
     })
   )

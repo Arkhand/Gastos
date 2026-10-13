@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../../lib/session.js'
 import { config } from '../../../../lib/env.js'
 import { dbMp } from '../../../../lib/mp/db.js'
 import { ownerDe } from '../../../../lib/mp/cuentas.js'
+import { pushListo } from '../../../../lib/mp/push.js'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,9 +18,9 @@ export async function GET() {
   try {
     const owner = ownerDe(await requireUserApi())
     return NextResponse.json({
-      habilitado: config.push.enabled,
+      habilitado: pushListo,
       publicKey: config.push.publicKey ?? null,
-      dispositivos: config.push.enabled ? await dbMp.contarSuscripciones(owner) : 0,
+      dispositivos: pushListo ? await dbMp.contarSuscripciones(owner) : 0,
     })
   } catch (err) {
     return responderError(err, 'GET')
@@ -31,7 +32,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const owner = ownerDe(await requireUserApi())
-    if (!config.push.enabled) return NextResponse.json({ error: 'Avisos no configurados' }, { status: 503 })
+    if (!pushListo) return NextResponse.json({ error: 'Avisos no configurados' }, { status: 503 })
     const { subscription: s } = await request.json()
     if (!s?.endpoint?.startsWith('https://') || !s?.keys?.p256dh || !s?.keys?.auth) {
       return NextResponse.json({ error: 'Suscripción inválida' }, { status: 400 })

@@ -23,7 +23,7 @@ function esCron(request) {
 export async function POST(request) {
   if (!config.mp.enabled) return NextResponse.json({ ok: false, error: 'mp-deshabilitado' })
   try {
-    if (esCron(request)) return NextResponse.json({ ok: true, resultados: await ejecutarSync() })
+    if (esCron(request)) return NextResponse.json({ ok: true, resultados: await ejecutarSync({ avisar: true }) })
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     const resultados = await ejecutarSync({ owner: ownerDe(user), respetarPausa: true })

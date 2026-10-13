@@ -109,8 +109,9 @@ export default function InicioClient({ personaDefault }) {
     setSheetOpen(true)
   }
 
-  // Deep link desde el push: ?mp=<id> abre la hoja de ese pago; ?mp=lista (o un id que
-  // ya no está pendiente) despliega la tarjeta. Se procesa una sola vez.
+  // Deep link desde el push: ?mp=<id> abre la hoja de ese pago; ?mp=lista, un id que
+  // ya no está pendiente o uno que parece ya cargado ("¿Ya lo cargaste?") despliega la
+  // tarjeta, para no duplicar. Se procesa una sola vez.
   const mpData = useMpPendientes().data
   const [mpAbrirLista, setMpAbrirLista] = useState(false)
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function InicioClient({ personaDefault }) {
     if (!id) return
     window.history.replaceState(null, '', '/inicio')
     const m = id !== 'lista' && mpData.pendientes?.find((p) => p.id === id)
-    if (m) agregarDesdeMp(m)
+    if (m && !m.duplicado) agregarDesdeMp(m)
     else setMpAbrirLista(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mpData])
