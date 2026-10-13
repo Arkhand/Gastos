@@ -34,6 +34,14 @@ export default function ConfigMenuPage() {
             </span>
             <span className="cfg-menu-arrow">›</span>
           </Link>
+          <Link className="cfg-menu-item" href="/config/mp">
+            <span className="cfg-menu-ico">🟦</span>
+            <span className="cfg-menu-txt">
+              <span className="cfg-menu-name">Mercado Pago</span>
+              <span className="cfg-menu-sub">Conectá tu cuenta para ver lo que pagaste y no cargaste</span>
+            </span>
+            <span className="cfg-menu-arrow">›</span>
+          </Link>
         </nav>
       </div>
     </AppShell>

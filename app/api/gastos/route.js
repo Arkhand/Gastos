@@ -12,6 +12,8 @@ import { obtenerCotizacion, convertirMontos } from '../../../lib/cotizacion.js'
 import { normalizarPersona, personaPorDefecto } from '../../../lib/personas.js'
 import { normalizarCategoria, otrosId, recargarCategorias } from '../../../lib/categorias.js'
 import { hoyAR } from '../../../lib/fecha.js'
+import { dbMp } from '../../../lib/mp/db.js'
+import { ownerDe } from '../../../lib/mp/cuentas.js'
 
 // Normaliza una fila cruda de `categorias` a la forma que usa la UI: agrega `label`
 // (alias de nombre) y defaults de emoji/color. Sin esto, el cliente (que usa
@@ -75,7 +77,8 @@ export async function GET(request) {
 }
 
 // POST /api/gastos — crea un gasto. Body: { descripcion, monto, moneda, a_nombre_de,
-// categoria, fecha, compartido }. Reusa la conversión de montos y los defaults.
+// categoria, fecha, compartido, mp_id?, mp_contacto_nombre? }. Reusa la conversión de
+// montos y los defaults. Con mp_id, el gasto sale de un pendiente de Mercado Pago.
 export async function POST(request) {
   try {
     const user = await requireUserApi()
@@ -86,6 +89,14 @@ export async function POST(request) {
     const montoNum = Number(body?.monto)
     if (!body?.descripcion || !Number.isFinite(montoNum) || montoNum < 0) {
       return NextResponse.json({ error: 'Descripción y monto válidos son obligatorios' }, { status: 400 })
+    }
+
+    // Alta desde un pendiente de Mercado Pago: tiene que ser del usuario y seguir
+    // pendiente (evita duplicar ante doble tap).
+    const owner = ownerDe(user)
+    const mov = body.mp_id ? await dbMp.leerMovimiento(owner, String(body.mp_id)) : null
+    if (body.mp_id && mov?.estado !== 'pendiente') {
+      return NextResponse.json({ error: 'Ese movimiento ya se procesó' }, { status: 409 })
     }
 
     const rate = await obtenerCotizacion()
@@ -100,6 +111,23 @@ export async function POST(request) {
       ...convertirMontos(body.moneda, montoNum, rate),
     }
     const nuevo = await crearGasto(user.id, user.displayName, datos)
+    if (mov) {
+      // El gasto ya existe: si marcar falla no se rompe el alta; el próximo listado
+      // lo ofrece como "¿Ya lo cargaste?" y se vincula con un toque.
+      try {
+        await dbMp.marcar(owner, mov.id, { estado: 'agregado', motivo: null, gasto_id: nuevo.id })
+        if (mov.contacto_id) {
+          const nombre = String(body.mp_contacto_nombre ?? '').trim()
+          await dbMp.guardarContacto(owner, mov.contacto_id, {
+            nombre: nombre || undefined,
+            categoria: datos.categoria,
+            compartido: datos.compartido,
+          })
+        }
+      } catch (e) {
+        console.error('[api/gastos POST] marcar mp', e.message)
+      }
+    }
     return NextResponse.json({ ok: true, gasto: nuevo })
   } catch (err) {
     const status = err.status || 500

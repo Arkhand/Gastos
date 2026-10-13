@@ -859,3 +859,30 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .cierre-foot { font-family:var(--font-d); font-size:12px; color:var(--ink-soft); margin:12px 0 8px; }
 .cierre-btn { width:100%; }
 .cierre-form { margin-top:4px; }
+
+/* ---- Mercado Pago: configuración ---- */
+.mp-cfg-datos { margin:0 0 12px; padding-left:18px; color:var(--ink-soft); font-size:14px; line-height:1.6; }
+.mp-cfg-acciones { display:flex; gap:10px; }
+.mp-cfg-conectar { display:block; margin-bottom:16px; text-decoration:none; }
+.mp-cfg-token { display:flex; flex-direction:column; gap:8px; }
+.mp-cfg-token label { font-size:14px; color:var(--ink-soft); }
+
+/* ---- Mercado Pago: pendientes en /inicio ---- */
+.mp-card { display:block; background:var(--card); border-radius:22px; padding:4px 14px; margin-bottom:14px; box-shadow:0 6px 16px rgba(120,90,60,.08); border:2px solid #cfe3f7; color:var(--ink); text-decoration:none; }
+.mp-card-aviso { padding:14px; font-weight:600; }
+.mp-card-head { width:100%; display:flex; justify-content:space-between; align-items:center; padding:12px 0; background:none; border:none; font-family:var(--font-d); font-size:16px; color:var(--ink); cursor:pointer; }
+.mp-card-arrow { color:var(--ink-soft); }
+.mp-list { list-style:none; margin:0; padding:0 0 8px; }
+.mp-item { padding:12px 0; border-top:1px solid #f0e6d9; }
+.mp-item-top { display:flex; justify-content:space-between; gap:10px; }
+.mp-item-desc { font-weight:600; overflow-wrap:anywhere; }
+.mp-item-monto { font-family:var(--font-d); font-weight:700; white-space:nowrap; }
+.mp-item-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; font-size:13px; color:var(--ink-soft); }
+.mp-chip { background:#eef4fb; color:#2f6a9a; border-radius:999px; padding:1px 8px; }
+.mp-dup { margin-top:8px; font-size:13px; background:var(--butter); border-radius:12px; padding:8px 10px; }
+.mp-link { margin-left:8px; background:none; border:none; padding:0; color:var(--coral-deep); font-weight:700; text-decoration:underline; cursor:pointer; }
+.mp-item-acts { display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
+.mp-btn, .mp-btn-ghost { border:none; border-radius:14px; padding:9px 16px; font-family:var(--font-d); font-weight:600; font-size:14px; cursor:pointer; }
+.mp-btn { background:linear-gradient(165deg,#ffb27a,#ef7a4e); color:#fff; }
+.mp-btn-ghost { background:#f0e6d9; color:var(--ink-soft); }
+.field-hint { margin-top:6px; font-size:12px; color:var(--ink-soft); }

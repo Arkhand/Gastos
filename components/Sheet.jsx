@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useCrearGasto, useEditarGasto, useBorrarGasto } from '../lib/api.js'
 import { useToast } from './Toasts.jsx'
+import { detalleContacto } from '../lib/mp/vista.js'
 
 // Fecha local YYYY-MM-DD (sin desfase UTC), igual que app.js.
 function ymdLocal(d) {
@@ -26,6 +27,7 @@ const VACIO = (personaDefault) => ({
   categoria: '__auto__',
   fecha: hoyStr(),
   fechaKind: 'hoy',
+  contactoNombre: '',
 })
 
 // Hoja inferior (bottom sheet) para cargar / editar un gasto. Portado de sheet.ejs
@@ -42,6 +44,7 @@ export default function Sheet({
   sugerencias = [],
   iaEnabled = false,
   onSaved, // callback(tipo) tras guardar: 'nuevo' | 'editado' | 'borrado'
+  mp = null, // pendiente de Mercado Pago que se está cargando (o null)
 }) {
   const crear = useCrearGasto()
   const editar = useEditarGasto()
@@ -53,6 +56,8 @@ export default function Sheet({
 
   const esEdicion = !!f.editId
   const autoDisponible = iaEnabled && !esEdicion
+  // Transferencia de MP: pedimos a quién fue (se recuerda por cuenta destino).
+  const pideContacto = !!(mp && mp.medio === 'transferencia' && mp.contacto)
 
   // El CSS del diseño abre la hoja con la clase `sheet-open` en el <body>
   // (body.sheet-open .sheet/.scrim). Mantenemos ese contrato.
@@ -77,6 +82,7 @@ export default function Sheet({
         categoria: initial.categoria ?? initial.cat ?? otrosId,
         fecha: fechaG || hoyStr(),
         fechaKind: !fechaG || fechaG === hoyStr() ? 'hoy' : fechaG === ayerStr() ? 'ayer' : 'otro',
+        contactoNombre: mp?.contacto?.nombre ?? '',
       })
     } else {
       setF({ ...VACIO(personaDefault), categoria: autoDisponible ? '__auto__' : otrosId })
@@ -88,6 +94,17 @@ export default function Sheet({
 
   function set(patch) {
     setF((prev) => ({ ...prev, ...patch }))
+  }
+
+  // Si la descripción es la automática ("Transferencia a …"), la actualizamos con el nombre.
+  function setContactoNombre(nombre) {
+    setF((prev) => ({
+      ...prev,
+      contactoNombre: nombre,
+      descripcion: prev.descripcion.startsWith('Transferencia a ') && nombre.trim()
+        ? `Transferencia a ${nombre.trim()}`
+        : prev.descripcion,
+    }))
   }
 
   // Personal: fuerza la persona al logueado y deshabilita el selector.
@@ -106,6 +123,7 @@ export default function Sheet({
     if (!f.descripcion.trim()) falta.push('qué')
     if (!(Number(f.monto) > 0)) falta.push('cuánto')
     if (!f.persona) falta.push('quién')
+    if (pideContacto && !f.contactoNombre.trim()) falta.push('a quién')
     return falta
   }
 
@@ -128,6 +146,7 @@ export default function Sheet({
       categoria,
       fecha: f.fecha,
       compartido: f.compartido,
+      ...(mp ? { mp_id: mp.id, mp_contacto_nombre: pideContacto ? f.contactoNombre.trim() : undefined } : {}),
     }
     try {
       if (esEdicion) {
@@ -194,6 +213,21 @@ export default function Sheet({
               ))}
             </datalist>
           </div>
+
+          {pideContacto && (
+            <div className="field">
+              <label htmlFor="f-contacto">¿A quién le transferiste?</label>
+              <input
+                className="inp"
+                id="f-contacto"
+                placeholder={mp.contacto.sugerido || 'Nombre'}
+                autoComplete="off"
+                value={f.contactoNombre}
+                onChange={(e) => setContactoNombre(e.target.value)}
+              />
+              <div className="field-hint">{detalleContacto(mp.contacto)} · se recuerda para la próxima</div>
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="f-monto">¿Cuánto?</label>

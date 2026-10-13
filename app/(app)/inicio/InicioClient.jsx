@@ -5,7 +5,8 @@ import Mic from '../../../components/Mic.jsx'
 import Sheet from '../../../components/Sheet.jsx'
 import GastoRow from '../../../components/GastoRow.jsx'
 import LoadingDots from '../../../components/LoadingDots.jsx'
-import { useGastos, useCrearGasto } from '../../../lib/api.js'
+import MpPendientes from '../../../components/MpPendientes.jsx'
+import { useGastos, useCrearGasto, useSyncMpAlAbrir } from '../../../lib/api.js'
 import { useToast } from '../../../components/Toasts.jsx'
 import { agruparPorDia, sugerenciasDescripcion, fmtMonto, hacerCatLookup } from '../../../lib/calculos.js'
 import { PERSONAS, personaLabel } from '../../../lib/personas.js'
@@ -18,6 +19,8 @@ export default function InicioClient({ personaDefault }) {
   const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetInitial, setSheetInitial] = useState(null)
+  const [mpMov, setMpMov] = useState(null) // pendiente de MP que se está cargando
+  useSyncMpAlAbrir()
 
   const cats = data?.categorias ?? []
   const otrosId = data?.otrosId ?? ''
@@ -40,12 +43,14 @@ export default function InicioClient({ personaDefault }) {
 
   // Abrir la hoja vacía (FAB ＋ o fallback cuando no hay soporte de voz).
   function abrirNuevo() {
+    setMpMov(null)
     setSheetInitial(null)
     setSheetOpen(true)
   }
 
   // Editar un gasto (de la BD: tiene a_nombre_de, categoria, compartido, etc.).
   function editar(g) {
+    setMpMov(null)
     setSheetInitial(g)
     setSheetOpen(true)
   }
@@ -76,6 +81,7 @@ export default function InicioClient({ personaDefault }) {
 
   // Voz: gasto incompleto -> abrir la hoja precargada.
   function abrirPrecargada(g) {
+    setMpMov(null)
     setSheetInitial({
       descripcion: g.descripcion || '',
       monto: g.monto || '',
@@ -84,6 +90,21 @@ export default function InicioClient({ personaDefault }) {
       categoria: g.categoria || otrosId,
       fecha: g.fecha || '',
       compartido: g.compartido !== false,
+    })
+    setSheetOpen(true)
+  }
+
+  // Mercado Pago: abrir la hoja precargada con el movimiento (lo marca el server al guardar).
+  function agregarDesdeMp(m) {
+    setMpMov(m)
+    setSheetInitial({
+      descripcion: m.descripcion || m.descripcion_mp || '',
+      monto: m.monto,
+      moneda: m.moneda || 'ARS',
+      a_nombre_de: personaDefault,
+      categoria: m.categoria_sugerida || otrosId,
+      fecha: m.fecha,
+      compartido: m.contacto?.compartido ?? true,
     })
     setSheetOpen(true)
   }
@@ -113,9 +134,25 @@ export default function InicioClient({ personaDefault }) {
             onAbrirHojaPrecargada={abrirPrecargada}
             sinSoporte={abrirNuevo}
           />
+          {/* Dentro de la columna izquierda: en escritorio el CSS ancla la hoja acá,
+              debajo del micrófono. En mobile .dk-col-main es display:contents y la
+              hoja sigue siendo un overlay fijo. */}
+          <Sheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            initial={sheetInitial}
+            categorias={cats}
+            personas={PERSONAS}
+            personaDefault={personaDefault}
+            otrosId={otrosId}
+            sugerencias={sugerencias}
+            iaEnabled={iaEnabled}
+            mp={mpMov}
+          />
         </div>
 
         <section className="recent">
+          <MpPendientes onAgregar={agregarDesdeMp} />
           <div className="recent-head">Últimos gastos</div>
           {isLoading ? (
             <LoadingDots label="Cargando gastos…" />
@@ -142,18 +179,6 @@ export default function InicioClient({ personaDefault }) {
       <button className="fab" type="button" aria-label="Cargar gasto" onClick={abrirNuevo}>
         <span>＋</span>
       </button>
-
-      <Sheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        initial={sheetInitial}
-        categorias={cats}
-        personas={PERSONAS}
-        personaDefault={personaDefault}
-        otrosId={otrosId}
-        sugerencias={sugerencias}
-        iaEnabled={iaEnabled}
-      />
     </AppShell>
   )
 }

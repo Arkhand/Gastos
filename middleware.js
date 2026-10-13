@@ -11,9 +11,9 @@ export function middleware(request) {
   const tieneCookie = request.cookies.has('gastos_session')
   if (tieneCookie) return NextResponse.next()
 
-  // API privada sin cookie -> 401. (Excluye /api/me, que maneja su propio 401, y
-  // /api/auth/*.)
-  if (pathname.startsWith('/api/') && pathname !== '/api/me') {
+  // API privada sin cookie -> 401. (Excluye /api/me, que maneja su propio 401;
+  // /api/mp/sync, que llama el cron con CRON_SECRET; y /api/auth/*.)
+  if (pathname.startsWith('/api/') && pathname !== '/api/me' && pathname !== '/api/mp/sync') {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
   // Página privada sin cookie -> login.
