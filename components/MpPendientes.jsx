@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMpPendientes, useDescartarMp, useVincularMp } from '../lib/api.js'
 import { fmtMonto } from '../lib/calculos.js'
@@ -11,12 +11,16 @@ const ddmm = (ymd) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`
 
 // Tarjeta "Mercado Pago · N sin cargar" en /inicio. Solo aparece si hay pendientes
 // (o si hay que reconectar la cuenta). Agregar abre la hoja precargada.
-export default function MpPendientes({ onAgregar }) {
+export default function MpPendientes({ onAgregar, abrirInicial = false }) {
   const { data } = useMpPendientes()
   const descartar = useDescartarMp()
   const vincular = useVincularMp()
   const toast = useToast()
-  const [abierta, setAbierta] = useState(false)
+  const [abierta, setAbierta] = useState(abrirInicial)
+  // Desde el aviso push resumen (?mp=lista) se abre desplegada.
+  useEffect(() => {
+    if (abrirInicial) setAbierta(true)
+  }, [abrirInicial])
 
   if (data?.necesitaReconectar) {
     return (

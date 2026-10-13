@@ -1,10 +1,18 @@
 'use client'
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import AppShell from '../../../../components/AppShell.jsx'
 import LoadingDots from '../../../../components/LoadingDots.jsx'
 import { useToast } from '../../../../components/Toasts.jsx'
-import { useMpCuenta, useDesconectarMp } from '../../../../lib/api.js'
+import {
+  useMpCuenta,
+  useDesconectarMp,
+  usePushEstado,
+  activarPush,
+  desactivarPush,
+  probarPush,
+} from '../../../../lib/api.js'
 
 const ERRORES = {
   autorizacion: 'Mercado Pago no confirmó la autorización. Probá de nuevo.',
@@ -78,6 +86,7 @@ export default function ConfigMpPage() {
                 Desconectar
               </button>
             </div>
+            <AvisosCelular />
           </section>
         ) : (
           <section className="cfg-card">
@@ -86,5 +95,52 @@ export default function ConfigMpPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+// Avisos push en ESTE dispositivo (cada celular se activa por separado).
+function AvisosCelular() {
+  const { data: p, isLoading } = usePushEstado()
+  const qc = useQueryClient()
+  const toast = useToast()
+  const [ocupado, setOcupado] = useState(false)
+  if (isLoading || !p?.habilitado) return null
+
+  async function correr(fn, ok) {
+    setOcupado(true)
+    try {
+      await fn()
+      if (ok) toast('success', ok)
+    } catch (e) {
+      toast('error', e.message || 'No se pudo')
+    } finally {
+      setOcupado(false)
+      qc.invalidateQueries({ queryKey: ['mp-push'] })
+    }
+  }
+
+  return (
+    <div className="mp-cfg-push">
+      <div className="mp-cfg-push-title">Avisos en este celular</div>
+      {!p.soportado ? (
+        <p className="ia-nota">Este navegador no soporta avisos. Abrí la app instalada en el celular.</p>
+      ) : p.permiso === 'denied' ? (
+        <p className="ia-error">Las notificaciones están bloqueadas para esta app. Habilitalas en Ajustes → Apps → Gastos → Notificaciones.</p>
+      ) : p.activo ? (
+        <div className="mp-cfg-acciones">
+          <button type="button" className="btn-save" disabled={ocupado} onClick={() => correr(probarPush, 'Aviso de prueba enviado')}>
+            Probar aviso
+          </button>
+          <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => correr(desactivarPush, 'Avisos desactivados en este celular')}>
+            Desactivar
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="btn-save" disabled={ocupado} onClick={() => correr(() => activarPush(p.publicKey), 'Avisos activados ✓')}>
+          Avisarme cuando pague con Mercado Pago
+        </button>
+      )}
+      {p.dispositivos > 0 && <p className="ia-nota">Dispositivos con avisos: {p.dispositivos}</p>}
+    </div>
   )
 }

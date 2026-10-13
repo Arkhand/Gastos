@@ -1,12 +1,12 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import AppShell from '../../../components/AppShell.jsx'
 import Mic from '../../../components/Mic.jsx'
 import Sheet from '../../../components/Sheet.jsx'
 import GastoRow from '../../../components/GastoRow.jsx'
 import LoadingDots from '../../../components/LoadingDots.jsx'
 import MpPendientes from '../../../components/MpPendientes.jsx'
-import { useGastos, useCrearGasto, useSyncMpAlAbrir } from '../../../lib/api.js'
+import { useGastos, useCrearGasto, useSyncMpAlAbrir, useMpPendientes } from '../../../lib/api.js'
 import { useToast } from '../../../components/Toasts.jsx'
 import { agruparPorDia, sugerenciasDescripcion, fmtMonto, hacerCatLookup } from '../../../lib/calculos.js'
 import { PERSONAS, personaLabel } from '../../../lib/personas.js'
@@ -109,6 +109,21 @@ export default function InicioClient({ personaDefault }) {
     setSheetOpen(true)
   }
 
+  // Deep link desde el push: ?mp=<id> abre la hoja de ese pago; ?mp=lista (o un id que
+  // ya no está pendiente) despliega la tarjeta. Se procesa una sola vez.
+  const mpData = useMpPendientes().data
+  const [mpAbrirLista, setMpAbrirLista] = useState(false)
+  useEffect(() => {
+    if (!mpData) return
+    const id = new URLSearchParams(window.location.search).get('mp')
+    if (!id) return
+    window.history.replaceState(null, '', '/inicio')
+    const m = id !== 'lista' && mpData.pendientes?.find((p) => p.id === id)
+    if (m) agregarDesdeMp(m)
+    else setMpAbrirLista(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mpData])
+
   return (
     <AppShell pageClass="page-inicio">
       <header className="hdr">
@@ -152,7 +167,7 @@ export default function InicioClient({ personaDefault }) {
         </div>
 
         <section className="recent">
-          <MpPendientes onAgregar={agregarDesdeMp} />
+          <MpPendientes onAgregar={agregarDesdeMp} abrirInicial={mpAbrirLista} />
           <div className="recent-head">Últimos gastos</div>
           {isLoading ? (
             <LoadingDots label="Cargando gastos…" />

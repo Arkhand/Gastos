@@ -53,3 +53,40 @@ self.addEventListener('fetch', (event) => {
     )
   )
 })
+
+// Push de Mercado Pago: muestra el aviso y, al tocarlo, abre/enfoca la app en la URL
+// del aviso (/inicio?mp=<id> abre la hoja de ese pago; ?mp=lista, la tarjeta).
+self.addEventListener('push', (event) => {
+  let d = {}
+  try {
+    d = event.data ? event.data.json() : {}
+  } catch {
+    d = { title: 'Gastos', body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(d.title || 'Gastos', {
+      body: d.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: d.tag || 'mp',
+      renotify: true,
+      data: { url: d.url || '/inicio' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = new URL((event.notification.data && event.notification.data.url) || '/inicio', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((w) => new URL(w.url).origin === self.location.origin)
+      if (!abierta) return self.clients.openWindow(url)
+      // navigate() falla en ventanas que este SW no controla: ahí abrimos una nueva.
+      return abierta
+        .navigate(url)
+        .then((w) => (w || abierta).focus())
+        .catch(() => self.clients.openWindow(url))
+    })
+  )
+})
