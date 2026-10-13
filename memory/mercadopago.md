@@ -103,6 +103,10 @@ Docs: https://www.mercadopago.com.ar/developers/es/docs/reports/released-money/a
   cuenta aislada, fallar suave, nunca romper la app.
 - Antecedente: https://github.com/TomasJunor/registro-de-gastos usa el mismo reporte.
 
+## Casos que NO entran o entran tarde (diagnosticado 2026-10-13)
+- **Autorizados** (Rappi con la prepaga de MP: `authorized/pending_capture`): MP los muestra "Aprobado" pero la API no; ahora se muestran y avisan al instante con chip "⏳ sin confirmar" (antes quedaban ocultos en `esperando`).
+- **QR interoperable / Transferencias 3.0** (ej. super chino, "ID de transacción" alfanumérico tipo `8D0Q619…`): NO es un pago para la API (`/v1/payments/{id}` → 404, no sale en payments/search). Solo puede llegar por el release report, que tiene demora (a las 19:20 AR el reporte llegaba hasta las 18:02). Pendiente confirmar si y cuándo aparece.
+
 ## Avisos push (en producción desde 2026-10-13, deploy `gastos-c0am22k48`)
 - Web Push con VAPID (`web-push` 3.6.7). Claves en Vercel y `.env`: `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT`
   (si cambian, cada celu tiene que desactivar y volver a activar). Clave inválida → push apagado

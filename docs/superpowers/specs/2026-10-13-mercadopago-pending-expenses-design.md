@@ -148,7 +148,7 @@ movements and contacts are kept, so reconnecting does not re-propose old pending
 | MP status | row is new | row is `esperando` / `pendiente` | row is `agregado` / `descartado` |
 |---|---|---|---|
 | `approved` | `pendiente` | → `pendiente` | unchanged |
-| `authorized`, `in_process`, `pending` | `esperando` | unchanged | unchanged |
+| `authorized`, `in_process`, `pending` | `pendiente` (UI chip "sin confirmar"; changed 2026-10-13 by Daniel: MP shows them as approved and Rappi can take days) | → `pendiente` | unchanged |
 | `cancelled`, `rejected`, `refunded`, `charged_back` | not inserted | → `descartado`, `motivo='mp_<status>'` | unchanged |
 
 Amount, date and raw data are refreshed while the row is `esperando`/`pendiente`, and

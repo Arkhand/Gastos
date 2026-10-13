@@ -60,14 +60,15 @@ const fila = (status) => mapearPago(pago({ status }), OWNER)
 
 test('fusionar: fila nueva', () => {
   assert.equal(fusionar(undefined, fila('approved')).estado, 'pendiente')
-  assert.equal(fusionar(undefined, fila('authorized')).estado, 'esperando')
+  assert.equal(fusionar(undefined, fila('authorized')).estado, 'pendiente') // se muestra al instante (sin confirmar)
   assert.equal(fusionar(undefined, fila('cancelled')), null)
   assert.equal(fusionar(undefined, fila('algo_raro')), null)
 })
 
 test('fusionar: esperando → pendiente al aprobarse; anulado → descartado', () => {
   assert.equal(fusionar({ estado: 'esperando' }, fila('approved')).estado, 'pendiente')
-  assert.equal(fusionar({ estado: 'esperando' }, fila('authorized')).estado, 'esperando')
+  assert.equal(fusionar({ estado: 'esperando' }, fila('authorized')).estado, 'pendiente') // filas viejas en esperando pasan a verse
+  assert.equal(fusionar({ estado: 'pendiente' }, fila('authorized')).estado, 'pendiente')
   const d = fusionar({ estado: 'pendiente' }, fila('refunded'))
   assert.equal(d.estado, 'descartado')
   assert.equal(d.motivo, 'mp_refunded')

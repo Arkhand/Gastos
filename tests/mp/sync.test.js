@@ -68,7 +68,7 @@ test('primera corrida: pagos nuevos por estado, fondeos fuera, pide reporte, sug
   const r = await sincronizarCuenta({ cuenta: CUENTA, mp, db, sugerir: sugerirFijo, ahora: T })
   assert.deepEqual(r.errores, [])
   assert.equal(db.movs.get('pay:1').estado, 'pendiente')
-  assert.equal(db.movs.get('pay:2').estado, 'esperando')
+  assert.equal(db.movs.get('pay:2').estado, 'pendiente')
   assert.ok(!db.movs.has('pay:3'))
   assert.equal(db.contactos.get(`${OWNER}|mp:172750527`).sugerido, 'FEDERICOFRIGOLI')
   assert.equal(db.movs.get('pay:1').categoria_sugerida, 'cat-1')

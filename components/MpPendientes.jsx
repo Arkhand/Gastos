@@ -70,6 +70,9 @@ export default function MpPendientes({ onAgregar, abrirInicial = false }) {
               <div className="mp-item-meta">
                 <span>{ddmm(m.fecha)}</span>
                 {CHIP[m.medio] && <span className="mp-chip">{CHIP[m.medio]}</span>}
+                {m.mp_status && m.mp_status !== 'approved' && (
+                  <span className="mp-chip" title="Mercado Pago todavía no lo cobró en firme: el monto puede ajustarse">⏳ sin confirmar</span>
+                )}
                 {m.contacto && <span>{m.contacto.nombre || detalleContacto(m.contacto)}</span>}
               </div>
               {m.duplicado && (
