@@ -103,5 +103,16 @@ Docs: https://www.mercadopago.com.ar/developers/es/docs/reports/released-money/a
   cuenta aislada, fallar suave, nunca romper la app.
 - Antecedente: https://github.com/TomasJunor/registro-de-gastos usa el mismo reporte.
 
-## Fase 2 (no ahora)
-Push (VAPID + `public/sw.js` sin romper su regla de solo cachear imágenes): "Pagaste $X en Y — ¿lo cargo?".
+## Avisos push (en producción desde 2026-10-13, deploy `gastos-c0am22k48`)
+- Web Push con VAPID (`web-push` 3.6.7). Claves en Vercel y `.env`: `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT`
+  (si cambian, cada celu tiene que desactivar y volver a activar). Clave inválida → push apagado
+  (`pushListo=false`), el sync sigue andando.
+- Tabla `mp_push` (una fila por celular: endpoint, owner, claves) + `mp_movimientos.notificado_at`.
+  Activar en un celu marca los pendientes existentes como avisados (no inunda).
+- Solo el CRON manda avisos (no el sync al abrir la app). 1 pendiente → "Pagaste $X — Panadería — ¿lo cargo?"
+  y abre `/inicio?mp=<id>` con la hoja; 2+ → resumen y abre la tarjeta. Si el pendiente parece ya cargado
+  (duplicado) abre la tarjeta. 404/410 del servicio push → se borra la suscripción.
+- Se activa por dispositivo en `/config/mp` → "Avisos en este celular" (Activar / Probar aviso / Desactivar).
+- Debug: `select * from mp_push`; `notificado_at` en `mp_movimientos`; `errores` del sync ("avisos: …").
+- Minors diferidos (review final): ícono de badge a color (puede verse cuadrado blanco), logout no
+  desuscribe, reusar suscripción con clave VAPID vieja, `ultimo_ok_at` sin usar.

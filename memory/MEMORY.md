@@ -2,4 +2,4 @@
 - [App arquitectura](app-arquitectura.md) — pantallas, flujo de datos (API → React Query → Client), endpoints y reglas de negocio (libro compartido, soft-delete, edición in-situ, monedas, categorías, división, cierres). Leer antes de tocar pantallas/lógica
 - [Supabase](supabase.md) — ref eagnsivzummrzqvzubkv, 4 tablas (gastos/categorias/division/cierres), service_role, RLS (gastos/categorias enabled sin políticas; division/cierres deshabilitado)
 - [Claude Design](claude-design.md) — proyecto design-system 'Gastos Design' (de527ce6-…), bundle sincronizable design-system/; fuente de verdad del CSS = app/legacy.css; nav en .jsx no .ejs
-- [Mercado Pago](mercadopago.md) — feature EN PRODUCCIÓN (cron cada 15 min): egresos de MP como 'pendientes de cargar' por persona (token propio c/u); API validada 2026-10-13; spec en docs/superpowers/specs/2026-10-13-mercadopago-pending-expenses-design.md
+- [Mercado Pago](mercadopago.md) — feature EN PRODUCCIÓN (cron cada 15 min + avisos push): egresos de MP como 'pendientes de cargar' por persona (token propio c/u); API validada 2026-10-13; spec en docs/superpowers/specs/2026-10-13-mercadopago-pending-expenses-design.md
