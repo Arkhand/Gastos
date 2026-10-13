@@ -864,8 +864,6 @@ table.tbl { width:100%; border-collapse:collapse; min-width:640px; }
 .mp-cfg-datos { margin:0 0 12px; padding-left:18px; color:var(--ink-soft); font-size:14px; line-height:1.6; }
 .mp-cfg-acciones { display:flex; gap:10px; }
 .mp-cfg-conectar { display:block; margin-bottom:16px; text-decoration:none; }
-.mp-cfg-token { display:flex; flex-direction:column; gap:8px; }
-.mp-cfg-token label { font-size:14px; color:var(--ink-soft); }
 
 /* ---- Mercado Pago: pendientes en /inicio ---- */
 .mp-card { display:block; background:var(--card); border-radius:22px; padding:4px 14px; margin-bottom:14px; box-shadow:0 6px 16px rgba(120,90,60,.08); border:2px solid #cfe3f7; color:var(--ink); text-decoration:none; }

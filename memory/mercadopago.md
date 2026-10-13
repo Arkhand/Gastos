@@ -1,6 +1,6 @@
 ---
 name: mercadopago
-description: "Feature IMPLEMENTADA (rama feat/mercadopago-pendientes, 2026-10-13): egresos de Mercado Pago como 'pendientes de cargar', por persona (cada uno con su token). Qué devuelve la API de MP (validado con datos reales 2026-10-13), qué no, y decisiones tomadas. Diseño completo en docs/superpowers/specs/2026-10-13-mercadopago-pending-expenses-design.md. Leer antes de tocar algo de MP."
+description: "Feature EN PRODUCCIÓN (2026-10-13, cron cada 15 min): egresos de Mercado Pago como 'pendientes de cargar', por persona (cada uno con su token). Qué devuelve la API de MP (validado con datos reales 2026-10-13), qué no, y decisiones tomadas. Diseño completo en docs/superpowers/specs/2026-10-13-mercadopago-pending-expenses-design.md. Leer antes de tocar algo de MP."
 metadata:
   node_type: memory
   type: project
@@ -12,15 +12,19 @@ metadata:
 `docs/superpowers/plans/2026-10-13-mercadopago-pending-expenses.md`, spec al lado). Tablas `mp_*`
 creadas en Supabase (`supabase/migrations/20261013120000_mercadopago.sql`). Probado en local con la
 cuenta real (Tasks 9–12 del plan). Backup previo de las tablas en
-`C:\Users\musia\Desktop\Proyectos\_SinCliente\backups\gastos-2026-10-13\`. Pendiente: cron en Supabase
-(`supabase/cron/mp-sync.sql`, el secreto lo carga Dani) y mergear la rama a main. Código en `lib/mp/`,
+`C:\Users\musia\Desktop\Proyectos\_SinCliente\backups\gastos-2026-10-13\`. **En producción desde
+2026-10-13** (deploy `gastos-6g25puxxt`, `main` = `4ca71dd`). Cron activo: job `mp-sync` (jobid 1,
+`*/15 * * * *`) con pg_cron + pg_net, secreto en Vault como `mp_cron_secret` (se cargó pegando por
+portapapeles; el snippet del SQL Editor se pisó para no dejarlo guardado). Ver corridas:
+`select * from cron.job_run_details order by start_time desc limit 5`. Ojo: editar un gasto NO actualiza
+su contacto en `mp_contactos` (el nombre/categoría/compartido se aprenden al agregar desde MP). Código en `lib/mp/`,
 rutas en `app/api/mp/`, tests `npm test`. **MP_TOKEN_KEY tiene que ser IGUAL en local y en Vercel**
 (la DB es la misma: con otra clave no se pueden descifrar las cuentas conectadas). Stack en
 [[app-arquitectura]], DB en [[supabase]], deploy en [[vercel-deployment]].
 
 ## Decisiones tomadas
 - **Por persona**: cada token de MP es la cuenta de una persona y sus pendientes se ven SOLO a ella
-  (filtro por email de sesión). Cada uno conecta su cuenta desde `/config`: botón OAuth "Conectar con Mercado Pago" (principal; Dani Mujer no necesita ser developer) o pegando su token (plan B). Tokens cifrados AES-256-GCM en `mp_cuentas` con `MP_TOKEN_KEY`; nunca vuelven al navegador. (`MP_ACCOUNTS` quedó descartado.)
+  (filtro por email de sesión). Cada uno conecta su cuenta desde `/config`: SOLO con el botón OAuth "Conectar con Mercado Pago" (la app de MP de Dani Hombre, `MP_CLIENT_ID/SECRET` en Vercel, sirve para los dos; Dani Mujer no necesita ser developer). El "pegar Access Token" (plan B) se sacó el 2026-10-13 porque confundía y OAuth anda; cuentas viejas con `metodo='token'` siguen andando y la pantalla ofrece "Reconectar". Ningún token personal va en env. Tokens cifrados AES-256-GCM en `mp_cuentas` con `MP_TOKEN_KEY`; nunca vuelven al navegador. (`MP_ACCOUNTS` quedó descartado.)
   Hoy solo Dani Hombre; Dani Mujer se suma agregando su par. `CRON_SECRET` es otra cosa: la llave del cron.
 - **Incluir pagos con tarjeta vía MP**, con chip 💳 (el chequeo "¿ya lo cargaste?" cubre el duplicado con el resumen).
 - **Disparador**: Supabase `pg_cron` + `pg_net` cada 15 min (secret en Vault) + sync al abrir `/inicio` (si > 5 min).
