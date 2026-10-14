@@ -103,9 +103,12 @@ Docs: https://www.mercadopago.com.ar/developers/es/docs/reports/released-money/a
   cuenta aislada, fallar suave, nunca romper la app.
 - Antecedente: https://github.com/TomasJunor/registro-de-gastos usa el mismo reporte.
 
+## Release report: UNA vez por día (desde 2026-10-14)
+Cada reporte que se pide le manda a la persona un mail de MP ("El reporte para conciliar tu dinero liberado está listo"). Investigado: NO se puede apagar por API (vaciar `notification_email_list` no se guarda/no sirve, `notify:false` en el POST se ignora, la spec OpenAPI oficial no tiene otro campo, nadie en GitHub lo resolvió; los que usan este reporte lo corren 1 vez/día). MP además agranda cualquier rango al día completo y no genera un reporte si el rango ya está cubierto. Decisión de Dani: pedirlo 1 vez por día desde las 20 AR (`HORA_REPORTE_AR` en `lib/mp/reporte.js`) → payouts (CBU, QR interoperable) llegan esa noche. Si los mails siguen molestando: filtro de Gmail por "dinero liberado". Ojo: quedó probado a medias poner un alias en `notification_email_list` (el reporte de prueba no se generó).
+
 ## Casos que NO entran o entran tarde (diagnosticado 2026-10-13)
 - **Autorizados** (Rappi con la prepaga de MP: `authorized/pending_capture`): MP los muestra "Aprobado" pero la API no; ahora se muestran y avisan al instante con chip "⏳ sin confirmar" (antes quedaban ocultos en `esperando`).
-- **QR interoperable / Transferencias 3.0** (ej. super chino, "ID de transacción" alfanumérico tipo `8D0Q619…`): NO es un pago para la API (`/v1/payments/{id}` → 404, no sale en payments/search). Solo puede llegar por el release report, que tiene demora (a las 19:20 AR el reporte llegaba hasta las 18:02). Pendiente confirmar si y cuándo aparece.
+- **QR interoperable / Transferencias 3.0** (ej. super chino, "ID de transacción" alfanumérico tipo `8D0Q619…`): NO es un pago para la API (`/v1/payments/{id}` → 404, no sale en payments/search). Llega por el release report como `payout` (confirmado: el de 19:01 entró 20:30 con el reporte horario). Con el reporte diario, llegan esa noche (20 AR).
 
 ## Avisos push (en producción desde 2026-10-13, deploy `gastos-c0am22k48`)
 - Web Push con VAPID (`web-push` 3.6.7). Claves en Vercel y `.env`: `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT`

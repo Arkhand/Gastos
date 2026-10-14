@@ -177,7 +177,7 @@ Each run, per account, in sequence (errors are logged to that account's
    - if `report_requested_at` is set and a CSV newer than it is in the list → download,
      `parsearReleaseCsv` → upsert payouts (contact `cbu:<account>` with `sugerido` = bank
      from the prefix), set `report_downloaded_at`, clear `report_requested_at`;
-   - else if nothing is pending and the last download is older than 1 h → request a new
+   - else if nothing is pending and today (AR) has no download yet and it is 20:00 AR or later (changed 2026-10-14 from hourly: every report emails the user and MP offers no way to turn it off) → request a new
      report for the last 3 days (`end_date` = now − 5 min), set `report_requested_at`;
    - a request older than 15 min without a file is considered lost and re-requested.
 5. **Suggestions**: for up to 10 `pendiente` rows with `categoria_sugerida is null`:
