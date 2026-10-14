@@ -12,6 +12,7 @@ import {
   activarPush,
   desactivarPush,
   probarPush,
+  sincronizarMpAhora,
 } from '../../../../lib/api.js'
 
 const ERRORES = {
@@ -86,6 +87,7 @@ export default function ConfigMpPage() {
                 Desconectar
               </button>
             </div>
+            <SincronizarAhora />
             <AvisosCelular />
           </section>
         ) : (
@@ -141,6 +143,73 @@ function AvisosCelular() {
         </button>
       )}
       {p.dispositivos > 0 && <p className="ia-nota">Dispositivos con avisos: {p.dispositivos}</p>}
+    </div>
+  )
+}
+
+const espera = (ms) => new Promise((r) => setTimeout(r, ms))
+const suma = (resultados, campo) => (resultados ?? []).reduce((n, x) => n + (x[campo] || 0), 0)
+
+// Sincronizar a mano (solo la cuenta propia). Los pagos llegan al instante; las
+// transferencias (CBU / QR de otros bancos) necesitan el reporte de MP, que tarda ~1 min
+// y manda un mail: se pide aparte y se consulta cada 20 s hasta 3 min.
+function SincronizarAhora() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const [estado, setEstado] = useState(null) // null | 'pagos' | 'transferencias'
+
+  const refrescar = () => {
+    qc.invalidateQueries({ queryKey: ['mp-pendientes'] })
+    qc.invalidateQueries({ queryKey: ['mp-cuenta'] })
+  }
+
+  async function sincronizar() {
+    setEstado('pagos')
+    try {
+      const r = await sincronizarMpAhora()
+      const n = suma(r.resultados, 'pagos')
+      toast('success', n ? `${n} ${n === 1 ? 'pago nuevo' : 'pagos nuevos'}` : 'Sin novedades')
+    } catch (e) {
+      toast('error', e.message || 'No se pudo sincronizar')
+    } finally {
+      setEstado(null)
+      refrescar()
+    }
+  }
+
+  async function traerTransferencias() {
+    if (!confirm('Para traer transferencias, Mercado Pago arma un reporte y te manda un mail avisando. ¿Seguimos?')) return
+    setEstado('transferencias')
+    try {
+      const ultimoBajado = async () => (await fetch('/api/mp/cuenta').then((x) => x.json()))?.sync?.report_downloaded_at
+      const antes = await ultimoBajado()
+      const primera = await sincronizarMpAhora({ reporte: true })
+      let payouts = suma(primera.resultados, 'payouts')
+      for (let i = 0; i < 9; i++) {
+        await espera(20_000)
+        const r = await sincronizarMpAhora()
+        payouts += suma(r.resultados, 'payouts')
+        const ahora = await ultimoBajado()
+        if (ahora && ahora !== antes) break
+      }
+      toast('success', payouts ? `${payouts} ${payouts === 1 ? 'transferencia nueva' : 'transferencias nuevas'}` : 'Sin transferencias nuevas')
+    } catch (e) {
+      toast('error', e.message || 'No se pudo traer las transferencias')
+    } finally {
+      setEstado(null)
+      refrescar()
+    }
+  }
+
+  return (
+    <div className="mp-cfg-push">
+      <div className="mp-cfg-push-title">Sincronizar</div>
+      <button type="button" className="btn-save" disabled={!!estado} onClick={sincronizar}>
+        {estado === 'pagos' ? 'Sincronizando…' : 'Sincronizar ahora'}
+      </button>
+      <button type="button" className="mp-link mp-cfg-alt" disabled={!!estado} onClick={traerTransferencias}>
+        {estado === 'transferencias' ? 'Buscando transferencias… (hasta 3 min)' : 'Traer también transferencias (CBU / QR de otros bancos)'}
+      </button>
     </div>
   )
 }

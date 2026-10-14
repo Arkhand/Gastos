@@ -18,7 +18,9 @@ function esCron(request) {
 }
 
 // POST /api/mp/sync — cron: todas las cuentas. Sesión: solo la propia, con pausa
-// de 5 min (lo llama /inicio al abrir). Nunca devuelve 500: los errores quedan en
+// de 5 min (lo llama /inicio al abrir). Body opcional (botón de /config/mp):
+// { forzar: true } saltea la pausa; { reporte: true } pide también el reporte de
+// transferencias aunque hoy ya se haya bajado (manda el mail de MP). Nunca devuelve 500: los errores quedan en
 // mp_sync.last_error.
 export async function POST(request) {
   if (!config.mp.enabled) return NextResponse.json({ ok: false, error: 'mp-deshabilitado' })
@@ -26,7 +28,8 @@ export async function POST(request) {
     if (esCron(request)) return NextResponse.json({ ok: true, resultados: await ejecutarSync({ avisar: true }) })
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    const resultados = await ejecutarSync({ owner: ownerDe(user), respetarPausa: true })
+    const { forzar, reporte } = await request.json().catch(() => ({}))
+    const resultados = await ejecutarSync({ owner: ownerDe(user), respetarPausa: !forzar, forzarReporte: !!reporte })
     return NextResponse.json({ ok: true, resultados })
   } catch (err) {
     console.error('[api/mp/sync]', err.message)

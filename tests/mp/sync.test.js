@@ -102,6 +102,34 @@ test('payouts anteriores a `desde` no se importan (primera conexión sin histori
   assert.equal(db.sync.get(OWNER).report_requested_at, null) // el reporte igual se da por bajado
 })
 
+test('forzarReporte: pide el reporte aunque hoy ya se haya bajado (botón "traer transferencias")', async () => {
+  const conReporteDeHoy = async () => {
+    const db = dbFalsa()
+    await db.guardarSync(OWNER, { desde: new Date(T - 86400_000).toISOString(), reporte_configurado: true, report_downloaded_at: new Date(T - 60_000).toISOString() })
+    return db
+  }
+  const pidio = (mp) => mp.llamadas.some(([m, rta]) => m === 'POST' && rta === '/v1/account/release_report')
+
+  const mpNormal = mpFalso()
+  await sincronizarCuenta({ cuenta: CUENTA, mp: mpNormal, db: await conReporteDeHoy(), sugerir: sugerirFijo, ahora: T })
+  assert.equal(pidio(mpNormal), false) // sin forzar: ya se bajó hoy
+
+  const mpForzado = mpFalso()
+  const db = await conReporteDeHoy()
+  await sincronizarCuenta({ cuenta: CUENTA, mp: mpForzado, db, sugerir: sugerirFijo, forzarReporte: true, ahora: T })
+  assert.equal(pidio(mpForzado), true)
+  assert.equal(db.sync.get(OWNER).report_requested_at, new Date(T).toISOString())
+})
+
+test('forzarReporte con un pedido en curso: baja, no vuelve a pedir', async () => {
+  const db = dbFalsa()
+  await db.guardarSync(OWNER, { desde: new Date(T - 86400_000).toISOString(), reporte_configurado: true, report_requested_at: new Date(T - 60_000).toISOString() })
+  const mp = mpFalso({ lista: [{ file_name: 'gastos-app-1.csv', date_created: new Date(T - 30_000).toISOString() }] })
+  const r = await sincronizarCuenta({ cuenta: CUENTA, mp, db, sugerir: sugerirFijo, forzarReporte: true, ahora: T })
+  assert.equal(r.payouts, 1)
+  assert.ok(!mp.llamadas.some(([m, rta]) => m === 'POST' && rta === '/v1/account/release_report'))
+})
+
 test('reaparece anulado → descartado; agregado no se toca', async () => {
   const db = dbFalsa()
   await db.guardarSync(OWNER, { desde: new Date(T - 86400_000).toISOString(), reporte_configurado: true, report_downloaded_at: new Date(T).toISOString() })
