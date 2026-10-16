@@ -406,12 +406,14 @@ function TablaDesktop({ movs, onEdit }) {
   }, [movs, per, cat, cur, tipo, q])
 
   // Helpers de formato y suma (ARS/USD se totalizan por separado). `byFecha`
-  // ordena de más nuevo a más viejo. `tArs`/`tUsd` = totales de las filas visibles.
+  // ordena por fecha del gasto de más nuevo a más viejo y, dentro del mismo día,
+  // por fecha de carga (el último cargado primero). `tArs`/`tUsd` = totales de las filas visibles.
   const fmtARS = (n) => (n == null ? '—' : '$' + Math.round(n).toLocaleString('es-AR'))
   const fmtUSD = (n) => (n == null ? '—' : 'US$' + Math.round(n).toLocaleString('es-AR'))
   const sumArs = (r) => r.reduce((s, x) => s + (x.ars || 0), 0)
   const sumUsd = (r) => r.reduce((s, x) => s + (x.usd || 0), 0)
-  const byFecha = (a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)
+  const byFecha = (a, b) =>
+    a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : a.creado < b.creado ? 1 : a.creado > b.creado ? -1 : 0
   const tArs = sumArs(rows), tUsd = sumUsd(rows)
 
   // Una fila <tr> de la tabla (fecha, persona, descripción, categoría, tipo,
