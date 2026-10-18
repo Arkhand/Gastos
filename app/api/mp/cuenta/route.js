@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../../lib/session.js'
 import { config } from '../../../../lib/env.js'
 import { dbMp } from '../../../../lib/mp/db.js'
 import { ownerDe, desconectar } from '../../../../lib/mp/cuentas.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function GET() {
     })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/mp/cuenta GET]', err.message)
+    if (status !== 401) reportarError('api/mp/cuenta GET', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -41,7 +42,7 @@ export async function DELETE() {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/mp/cuenta DELETE]', err.message)
+    if (status !== 401) reportarError('api/mp/cuenta DELETE', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

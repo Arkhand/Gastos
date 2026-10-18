@@ -31,7 +31,7 @@ rutas en `app/api/mp/`, tests `npm test`. **MP_TOKEN_KEY tiene que ser IGUAL en 
   Activar pg_cron y crear tablas = cambio en sistema vivo → confirmar con Dani antes.
 - Sin backfill: la primera sync de cada cuenta importa desde ayer.
 - Categoría: la IA (`revisarGasto` de `lib/ia.js`) se llama en el server al detectar el movimiento.
-  OJO: hoy "Automático" en la hoja manual guarda "Otros" sin IA (`revisarVoz` en `lib/api.js` no lo usa nadie).
+  Desde 2026-10-18 la hoja abre en "Automático" y la IA elige al guardar (ver [[ia-categorizacion]]).
 - Contactos aprendidos: al confirmar una transferencia se guarda nombre/categoría/compartido del destino
   (`mp:<collector_id>` o `cbu:<cuenta>`) y la próxima viene precargada.
 
@@ -104,7 +104,7 @@ Docs: https://www.mercadopago.com.ar/developers/es/docs/reports/released-money/a
 - Antecedente: https://github.com/TomasJunor/registro-de-gastos usa el mismo reporte.
 
 ## Release report: UNA vez por día (desde 2026-10-14)
-Cada reporte que se pide le manda a la persona un mail de MP ("El reporte para conciliar tu dinero liberado está listo"). Investigado: NO se puede apagar por API (vaciar `notification_email_list` no se guarda/no sirve, `notify:false` en el POST se ignora, la spec OpenAPI oficial no tiene otro campo, nadie en GitHub lo resolvió; los que usan este reporte lo corren 1 vez/día). MP además agranda cualquier rango al día completo y no genera un reporte si el rango ya está cubierto. Decisión de Dani: pedirlo 1 vez por día desde las 20 AR (`HORA_REPORTE_AR` en `lib/mp/reporte.js`) → payouts (CBU, QR interoperable) llegan esa noche. Si los mails siguen molestando: filtro de Gmail por "dinero liberado". Ojo: quedó probado a medias poner un alias en `notification_email_list` (el reporte de prueba no se generó).
+Cada reporte que se pide le manda a la persona un mail de MP ("El reporte para conciliar tu dinero liberado está listo"). Investigado: NO se puede apagar por API (vaciar `notification_email_list` no se guarda/no sirve, `notify:false` en el POST se ignora, la spec OpenAPI oficial no tiene otro campo, nadie en GitHub lo resolvió; los que usan este reporte lo corren 1 vez/día). MP además agranda cualquier rango al día completo y no genera un reporte si el rango ya está cubierto. Decisión de Dani: pedirlo 1 vez por día desde las 20 AR (`HORA_REPORTE_AR` en `lib/mp/reporte.js`) → payouts (CBU, QR interoperable) llegan esa noche. Si los mails siguen molestando: filtro de Gmail por "dinero liberado". Probado a fondo (agente, 2026-10-14): con `notification_email_list: ["musiald+mp-reportes@gmail.com"]` el mail IGUAL llega a musiald@gmail.com (To/Delivered-To) y al alias nada; `[null]`/`[{}]`/`[""]` dan 400; settlement_report da 404 para esta cuenta. NO hay forma de evitarlo → filtro Gmail: `from:info@mercadopago.com.ar subject:"reporte de liquidaciones"`.
 
 ## Casos que NO entran o entran tarde (diagnosticado 2026-10-13)
 - **Autorizados** (Rappi con la prepaga de MP: `authorized/pending_capture`): MP los muestra "Aprobado" pero la API no; ahora se muestran y avisan al instante con chip "⏳ sin confirmar" (antes quedaban ocultos en `esperando`).

@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../lib/session.js'
 import { dbEnabled, guardarDivision } from '../../../lib/db.js'
 import { ensureDivisionCargada, getDivision, recargarDivision } from '../../../lib/division.js'
 import { PERSONAS, PERSONA_IDS } from '../../../lib/personas.js'
+import { reportarError } from '../../../lib/alertas/index.js'
 
 // GET /api/division — % por integrante (con label/emoji para la UI).
 export async function GET() {
@@ -20,7 +21,7 @@ export async function GET() {
     return NextResponse.json({ division })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/division GET]', err.message)
+    if (status !== 401) reportarError('api/division GET', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -48,7 +49,7 @@ export async function PUT(request) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/division PUT]', err.message)
+    if (status !== 401) reportarError('api/division PUT', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

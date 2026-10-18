@@ -3,6 +3,7 @@ import { perfilDesdeCode } from '../../../../lib/google-oauth.js'
 import { emailPermitido } from '../../../../lib/acceso.js'
 import { getSession } from '../../../../lib/session.js'
 import { config } from '../../../../lib/env.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 // GET /auth/google/callback — Google vuelve acá con ?code=. Intercambiamos por el
 // perfil, validamos lista blanca, guardamos la sesión y vamos al inicio.
@@ -26,7 +27,7 @@ export async function GET(request) {
     await session.save()
     return NextResponse.redirect(`${origin}/inicio`)
   } catch (err) {
-    console.error('[auth callback]', err.message)
+    reportarError('auth callback', err)
     return NextResponse.redirect(`${origin}/?error=auth`)
   }
 }

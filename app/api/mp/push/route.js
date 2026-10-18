@@ -4,12 +4,13 @@ import { config } from '../../../../lib/env.js'
 import { dbMp } from '../../../../lib/mp/db.js'
 import { ownerDe } from '../../../../lib/mp/cuentas.js'
 import { pushListo } from '../../../../lib/mp/push.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 export const dynamic = 'force-dynamic'
 
 function responderError(err, donde) {
   const status = err.status || 500
-  if (status !== 401) console.error(`[api/mp/push ${donde}]`, err.message)
+  if (status !== 401) reportarError(`api/mp/push ${donde}`, err)
   return NextResponse.json({ error: err.message }, { status })
 }
 

@@ -9,6 +9,7 @@ import {
   contarGastosDeCategoria,
 } from '../../../../lib/db.js'
 import { recargarCategorias, normalizarNombre } from '../../../../lib/categorias.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 const NOMBRE_MAX = 24
 
@@ -37,7 +38,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/categorias PATCH]', err.message)
+    if (status !== 401) reportarError('api/categorias PATCH', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -62,7 +63,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ ok: true, resultado: usados > 0 ? 'archivada' : 'eliminada' })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/categorias DELETE]', err.message)
+    if (status !== 401) reportarError('api/categorias DELETE', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

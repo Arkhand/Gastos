@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '../../../../lib/session.js'
 import { ownerDe, conectarConCodigo } from '../../../../lib/mp/cuentas.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 // GET /api/mp/callback?code&state — MP vuelve acá después de autorizar.
 export async function GET(request) {
@@ -20,7 +21,7 @@ export async function GET(request) {
     await conectarConCodigo(ownerDe(session.user), code, `${origin}/api/mp/callback`)
     return NextResponse.redirect(`${origin}/config/mp?ok=1`)
   } catch (err) {
-    console.error('[api/mp/callback]', err.message)
+    reportarError('api/mp/callback', err)
     return NextResponse.redirect(`${origin}/config/mp?error=${err.code === 'cuenta-ajena' ? 'cuenta-ajena' : 'canje'}`)
   }
 }

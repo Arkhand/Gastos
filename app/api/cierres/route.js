@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../lib/session.js'
 import { dbEnabled, obtenerCierre, crearCierre } from '../../../lib/db.js'
 import { ensureDivisionCargada, getDivision } from '../../../lib/division.js'
 import { hoyAR } from '../../../lib/fecha.js'
+import { reportarError } from '../../../lib/alertas/index.js'
 
 // POST /api/cierres { mes } — cierra un mes pasado (congela el % global vigente).
 // Definitivo: rechaza mes ya cerrado, formato inválido, o mes no pasado.
@@ -24,7 +25,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, cierre })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/cierres POST]', err.message)
+    if (status !== 401) reportarError('api/cierres POST', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

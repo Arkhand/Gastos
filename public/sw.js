@@ -3,9 +3,10 @@
 // versión vieja del estilo o del código mientras seguimos iterando el diseño,
 // y nunca se mezclan datos entre usuarios.
 
-const CACHE = 'gastos-static-v3'
+const CACHE = 'gastos-static-v4'
 const ASSETS = [
   '/icon-192.png',
+  '/badge-96.png',
   '/icon-512.png',
   '/icon-512-maskable.png',
   '/manifest.webmanifest',
@@ -67,7 +68,9 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(d.title || 'Gastos', {
       body: d.body || '',
       icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      // Android pinta el badge usando SOLO la transparencia: tiene que ser una silueta
+      // sobre fondo transparente (con el ícono a color salía un círculo blanco lleno).
+      badge: '/badge-96.png',
       tag: d.tag || 'mp',
       renotify: true,
       data: { url: d.url || '/inicio' },

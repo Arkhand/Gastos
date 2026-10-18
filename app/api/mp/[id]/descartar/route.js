@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserApi } from '../../../../../lib/session.js'
 import { dbMp } from '../../../../../lib/mp/db.js'
 import { ownerDe } from '../../../../../lib/mp/cuentas.js'
+import { reportarError } from '../../../../../lib/alertas/index.js'
 
 // POST /api/mp/:id/descartar { deshacer? } — descartar un pendiente, o deshacer
 // un descarte propio (vuelve a pendiente). Solo sobre movimientos del usuario.
@@ -17,7 +18,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/mp/descartar]', err.message)
+    if (status !== 401) reportarError('api/mp/descartar', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../../../lib/session.js'
 import { dbMp } from '../../../../../lib/mp/db.js'
 import { ownerDe } from '../../../../../lib/mp/cuentas.js'
 import { enviarAviso, pushListo } from '../../../../../lib/mp/push.js'
+import { reportarError } from '../../../../../lib/alertas/index.js'
 
 // POST — manda un aviso de prueba a los dispositivos del usuario.
 export async function POST() {
@@ -22,7 +23,7 @@ export async function POST() {
     return NextResponse.json({ ok: true, enviados: r.ok })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/mp/push/probar]', err.message)
+    if (status !== 401) reportarError('api/mp/push/probar', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

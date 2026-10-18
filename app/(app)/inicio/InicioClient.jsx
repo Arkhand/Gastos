@@ -102,7 +102,8 @@ export default function InicioClient({ personaDefault }) {
       monto: m.monto,
       moneda: m.moneda || 'ARS',
       a_nombre_de: personaDefault,
-      categoria: m.categoria_sugerida || otrosId,
+      // Automático salvo que el contacto ya tenga una categoría aprendida (no Otros).
+      categoria: m.contacto?.categoria && m.contacto.categoria !== otrosId ? m.contacto.categoria : '__auto__',
       fecha: m.fecha,
       compartido: m.contacto?.compartido ?? true,
     })

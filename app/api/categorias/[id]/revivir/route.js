@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserApi } from '../../../../../lib/session.js'
 import { dbEnabled, listarCategorias, marcarCategoriaEliminada } from '../../../../../lib/db.js'
 import { recargarCategorias, normalizarNombre } from '../../../../../lib/categorias.js'
+import { reportarError } from '../../../../../lib/alertas/index.js'
 
 // POST /api/categorias/:id/revivir — saca la marca de borrado (revalida choque).
 export async function POST(request, { params }) {
@@ -20,7 +21,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/categorias revivir]', err.message)
+    if (status !== 401) reportarError('api/categorias revivir', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

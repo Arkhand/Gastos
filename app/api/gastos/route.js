@@ -15,6 +15,8 @@ import { hoyAR } from '../../../lib/fecha.js'
 import { dbMp } from '../../../lib/mp/db.js'
 import { ownerDe } from '../../../lib/mp/cuentas.js'
 import { agregarDesdeMp } from '../../../lib/mp/agregar.js'
+import { categoriaAutomatica } from '../../../lib/ia.js'
+import { reportarError } from '../../../lib/alertas/index.js'
 
 // Normaliza una fila cruda de `categorias` a la forma que usa la UI: agrega `label`
 // (alias de nombre) y defaults de emoji/color. Sin esto, el cliente (que usa
@@ -72,7 +74,7 @@ export async function GET(request) {
     })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/gastos GET]', err.message)
+    if (status !== 401) reportarError('api/gastos GET', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -98,7 +100,10 @@ export async function POST(request) {
       monto: montoNum,
       moneda: body.moneda,
       a_nombre_de: normalizarPersona(body.a_nombre_de) ?? personaPorDefecto(user.email),
-      categoria: normalizarCategoria(body.categoria),
+      // "auto" = la persona dejó "Automático" en la hoja: elige la IA (o queda Otros).
+      categoria: body.categoria === 'auto'
+        ? await categoriaAutomatica(String(body.descripcion))
+        : normalizarCategoria(body.categoria),
       fecha: body.fecha ? String(body.fecha) : null,
       compartido: String(body.compartido) !== 'false',
       ...convertirMontos(body.moneda, montoNum, rate),
@@ -125,7 +130,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, gasto: nuevo })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/gastos POST]', err.message)
+    if (status !== 401) reportarError('api/gastos POST', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

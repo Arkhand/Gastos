@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserApi } from '../../../../../lib/session.js'
 import { dbEnabled, corregirGasto } from '../../../../../lib/db.js'
 import { normalizarCategoria, recargarCategorias } from '../../../../../lib/categorias.js'
+import { reportarError } from '../../../../../lib/alertas/index.js'
 
 // POST /api/gastos/:id/corregir { descripcion, categoria } — aplica la corrección
 // de la IA (solo desc + categoría) sobre un gasto recién creado. También deshace.
@@ -19,7 +20,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/gastos corregir]', err.message)
+    if (status !== 401) reportarError('api/gastos corregir', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

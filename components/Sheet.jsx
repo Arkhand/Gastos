@@ -136,8 +136,8 @@ export default function Sheet({
       return
     }
     setGuardando(true)
-    // En Automático, mandamos "Otros" como placeholder (la IA puede cambiarla luego).
-    const categoria = f.categoria === '__auto__' ? otrosId : f.categoria
+    // En Automático la elige la IA en el server al guardar (si no encuentra, Otros).
+    const categoria = f.categoria === '__auto__' ? 'auto' : f.categoria
     const body = {
       descripcion: polishLocal(f.descripcion),
       monto: Number(f.monto),
@@ -283,7 +283,8 @@ export default function Sheet({
             <label htmlFor="cat-select">Categoría</label>
             <div className="cat-select-wrap">
               <select className="inp cat-select" id="cat-select" value={f.categoria} onChange={(e) => set({ categoria: e.target.value })}>
-                {autoDisponible && <option value="__auto__">✨ Automático (lo elige la IA)</option>}
+                {/* hidden: se ve como valor inicial pero no aparece en la lista */}
+                {autoDisponible && <option value="__auto__" hidden>✨ Automático</option>}
                 {categorias.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.emoji}  {c.label}

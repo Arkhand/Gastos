@@ -4,6 +4,7 @@ import { dbEnabled, actualizarGasto, eliminarGasto } from '../../../../lib/db.js
 import { obtenerCotizacion, convertirMontos } from '../../../../lib/cotizacion.js'
 import { normalizarPersona, personaPorDefecto } from '../../../../lib/personas.js'
 import { normalizarCategoria, recargarCategorias } from '../../../../lib/categorias.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 // PATCH /api/gastos/:id — edita en sitio (mismo id, sin baja+alta -> no duplica).
 export async function PATCH(request, { params }) {
@@ -37,7 +38,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ ok: true, gasto: actualizado })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/gastos PATCH]', err.message)
+    if (status !== 401) reportarError('api/gastos PATCH', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -52,7 +53,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/gastos DELETE]', err.message)
+    if (status !== 401) reportarError('api/gastos DELETE', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

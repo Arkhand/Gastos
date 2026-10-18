@@ -4,6 +4,7 @@ import { getUser } from '../../../../lib/session.js'
 import { config } from '../../../../lib/env.js'
 import { ownerDe } from '../../../../lib/mp/cuentas.js'
 import { ejecutarSync } from '../../../../lib/mp/ejecutar.js'
+import { reportarError } from '../../../../lib/alertas/index.js'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -32,7 +33,7 @@ export async function POST(request) {
     const resultados = await ejecutarSync({ owner: ownerDe(user), respetarPausa: !forzar, forzarReporte: !!reporte })
     return NextResponse.json({ ok: true, resultados })
   } catch (err) {
-    console.error('[api/mp/sync]', err.message)
+    reportarError('api/mp/sync', err)
     return NextResponse.json({ ok: false, error: 'sync-fallo' })
   }
 }

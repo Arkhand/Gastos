@@ -3,6 +3,7 @@ import { requireUserApi } from '../../../../../lib/session.js'
 import { obtenerGasto } from '../../../../../lib/db.js'
 import { dbMp } from '../../../../../lib/mp/db.js'
 import { ownerDe } from '../../../../../lib/mp/cuentas.js'
+import { reportarError } from '../../../../../lib/alertas/index.js'
 
 // POST /api/mp/:id/vincular { gasto_id } — "Es este": el movimiento ya estaba
 // cargado como ese gasto. Se marca agregado y se guarda el vínculo.
@@ -21,7 +22,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/mp/vincular]', err.message)
+    if (status !== 401) reportarError('api/mp/vincular', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserApi } from '../../../lib/session.js'
 import { dbEnabled, listarCategorias, crearCategoria } from '../../../lib/db.js'
 import { recargarCategorias, normalizarNombre, colorPara } from '../../../lib/categorias.js'
+import { reportarError } from '../../../lib/alertas/index.js'
 
 const NOMBRE_MAX = 24
 
@@ -33,7 +34,7 @@ export async function GET() {
     })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/categorias GET]', err.message)
+    if (status !== 401) reportarError('api/categorias GET', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
@@ -69,7 +70,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     const status = err.status || 500
-    if (status !== 401) console.error('[api/categorias POST]', err.message)
+    if (status !== 401) reportarError('api/categorias POST', err)
     return NextResponse.json({ error: err.message }, { status })
   }
 }
