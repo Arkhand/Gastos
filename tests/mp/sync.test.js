@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { sincronizarCuenta, crearSugeridor } from '../../lib/mp/sync.js'
+import { sincronizarCuenta, crearSugeridor, MP_FALLAS_PARA_AVISAR } from '../../lib/mp/sync.js'
 
 const OWNER = 'musiald@gmail.com'
 const CUENTA = { owner: OWNER, mp_user_id: 2843637 }
@@ -150,6 +150,17 @@ test('si payments/search falla, el reporte sigue y queda last_error', async () =
   assert.match(r.errores[0], /^pagos: MP caído/)
   assert.ok(mp.llamadas.some(([m, rta]) => m === 'POST' && rta === '/v1/account/release_report'))
   assert.match(db.sync.get(OWNER).last_error, /MP caído/)
+})
+
+test('errores_seguidos: suma por corrida con error y vuelve a 0 con una buena', async () => {
+  const db = dbFalsa()
+  const correr = (fallar) => sincronizarCuenta({ cuenta: CUENTA, mp: mpFalso({ fallar }), db, sugerir: sugerirFijo, ahora: T })
+  const seguidos = []
+  for (let i = 0; i < MP_FALLAS_PARA_AVISAR; i++) seguidos.push((await correr(true)).erroresSeguidos)
+  assert.deepEqual(seguidos, [1, 2, 3, 4])
+  assert.equal(db.sync.get(OWNER).errores_seguidos, 4)
+  assert.equal((await correr(false)).erroresSeguidos, 0)
+  assert.equal(db.sync.get(OWNER).errores_seguidos, 0)
 })
 
 test('sugerencias: máximo 10 por corrida', async () => {
