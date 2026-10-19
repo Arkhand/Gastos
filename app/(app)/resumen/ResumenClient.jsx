@@ -8,6 +8,7 @@ import { useGastos, useCerrarMes } from '../../../lib/api.js'
 import { useToast } from '../../../components/Toasts.jsx'
 import {
   agruparPorDia,
+  porFechaDesc,
   sugerenciasDescripcion,
   fmtMonto,
   filaMovimiento,
@@ -61,7 +62,7 @@ export default function ResumenClient({ personaDefault }) {
   // ---- Filtros lista mobile (buscar + persona) ----
   const [mq, setMq] = useState('')
   const [mPer, setMPer] = useState('all')
-  const grupos = useMemo(() => agruparPorDia(gastosMes), [gastosMes])
+  const grupos = useMemo(() => agruparPorDia(gastosMes.slice().sort(porFechaDesc)), [gastosMes])
   const filtrandoMobile = mq.trim() !== '' || mPer !== 'all'
   function matchMobile(g) {
     const q = mq.toLowerCase().trim()
